@@ -12,6 +12,7 @@ import {
 import SmoothScrollbar from 'smooth-scrollbar'
 
 import { VideoPlayer } from '../../components/VideoPlayer'
+import { VideoJsPlayer } from '../../components/VideoJsPlayer'
 import { Episode } from './types'
 
 type MainStatelessProps = {
@@ -31,8 +32,6 @@ export default function MainStateless({
   reorderEpisodes,
   onConfirmEpisode,
 }: MainStatelessProps) {
-  console.count('MainStateless')
-
   function onDragEndReorderEpisodes(result: DropResult, _provided: ResponderProvided) {
     const lastIndex = result.source.index
     const newIndex = result.destination?.index
@@ -87,8 +86,6 @@ function HorizontalMainContent({
   removeEpisode,
   onDragEnd,
 }: MainContentProps) {
-  console.count('HorizontalMainContent')
-
   React.useLayoutEffect(() => {
     SmoothScrollbar.initAll()
   }, [])
@@ -114,15 +111,13 @@ function HorizontalMainContent({
       </GridItem>
 
       <GridItem>
-        <VideoPlayer src={selectedEpisode?.src || ''} />
+        <VideoJsPlayer src={selectedEpisode?.src || ''} />
       </GridItem>
     </Grid>
   )
 }
 
 function VerticalMainContent({ episodes, selectedEpisode, selectEpisode, removeEpisode, onDragEnd }: MainContentProps) {
-  console.count('VerticalMainContent')
-
   const episodesElements = useMemo(() => {
     return episodes.map((it, index) => (
       <EpisodeListItemDraggable
@@ -139,7 +134,7 @@ function VerticalMainContent({ episodes, selectedEpisode, selectEpisode, removeE
 
   return (
     <Box display={{ lg: 'none', base: 'block' }}>
-      <VideoPlayer src={selectedEpisode?.src || ''} />
+      <VideoJsPlayer src={selectedEpisode?.src || ''} />
 
       <Spacer h="4" />
 
@@ -190,8 +185,6 @@ type EpisodesListProps = {
 }
 
 function EpisodesList({ children }: EpisodesListProps) {
-  console.count('EpisodesList')
-
   return (
     <UnorderedList spacing="2" listStyleType="none" m="0">
       {children}
@@ -205,8 +198,6 @@ type EpisodeListItemDraggableProps = EpisodeListItemProps & {
 }
 
 function EpisodeListItemDraggable({ index, draggableId, ...props }: EpisodeListItemDraggableProps) {
-  console.count('EpisodeListItemDraggable')
-
   const selected = props.selectedEpisode?.src === props.episode.src
   return (
     <Draggable key={draggableId} draggableId={draggableId} index={index}>
@@ -233,8 +224,6 @@ type EpisodesListDraggableProps = EpisodesListProps & {
 }
 
 function EpisodesListDroppable({ onDragEnd, ...props }: EpisodesListDraggableProps) {
-  console.count('EpisodesListDroppable')
-
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <StrictModeDroppable droppableId="episodes">
@@ -254,8 +243,6 @@ type EpisodeInputProps = {
 }
 
 function EpisodeInput({ onConfirm }: EpisodeInputProps) {
-  console.count('EpisodeInput')
-
   const nameInputRef = React.useRef<HTMLInputElement>(null)
   const srcInputRef = React.useRef<HTMLInputElement>(null)
 

@@ -9,7 +9,6 @@ export default function Main() {
   const toast = useToast()
   const [episodes, setEpisodes] = React.useState<Episode[]>([])
   const [selectedEpisode, setSelectedEpisode] = React.useState<Episode>()
-  console.count('Main')
 
   const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
   const showSuccess = (title: string) => toast({ status: 'success', title, isClosable: true })
