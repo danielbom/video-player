@@ -15,12 +15,12 @@ import React, { useEffect, useRef } from 'react'
 import useFullpage from '../../hooks/useFullpage'
 import './index.css'
 
-type VideoPlayerProps = {
+type MediaChromePlayerProps = {
   src: string
   fullPage?: boolean
 }
 
-export const VideoPlayer = ({ src, fullPage }: VideoPlayerProps) => {
+export const MediaChromePlayer = ({ src, fullPage }: MediaChromePlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useRestoreCurrentTime(videoRef, src)

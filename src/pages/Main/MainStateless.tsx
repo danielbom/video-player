@@ -11,7 +11,7 @@ import {
 } from 'react-beautiful-dnd'
 import SmoothScrollbar from 'smooth-scrollbar'
 
-import { VideoPlayer } from '../../components/VideoPlayer'
+import { MediaChromePlayer } from '../../components/MediaChromePlayer'
 // import { VideoJsPlayer } from '../../components/VideoJsPlayer'
 import { Episode } from './types'
 
@@ -44,7 +44,7 @@ export default function MainStateless({
     reorderEpisodes(newEpisodes)
   }
 
-  const videoPlayer = <VideoPlayer src={selectedEpisode?.src || ''} />
+  const videoPlayer = <MediaChromePlayer src={selectedEpisode?.src || ''} />
   const episodesList = (
     <EpisodesListDroppable onDragEnd={onDragEndReorderEpisodes}>
       {episodes.map((it, index) => (

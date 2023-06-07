@@ -14,7 +14,7 @@ import {
   Input,
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { VideoPlayer as Player1 } from '../../components/VideoPlayer'
+import { MediaChromePlayer as Player1 } from '../../components/MediaChromePlayer'
 import { VideoJsPlayer as Player2 } from '../../components/VideoJsPlayer'
 import useStateStorage from '../../hooks/useStateStorage'
 
