@@ -14,11 +14,9 @@ import {
   Input,
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MediaChromePlayer as Player1 } from '../../components/MediaChromePlayer'
-import { VideoJsPlayer as Player2 } from '../../components/VideoJsPlayer'
+import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import useStateStorage from '../../hooks/useStateStorage'
 
-type PlayerKind = 'player1' | 'player2'
 type Settings = {
   player: PlayerKind
   src: string | undefined
@@ -27,7 +25,7 @@ type Settings = {
 export default function PlayerWithDrawer() {
   const opacityRef = useRef<'enabled' | 'changing' | 'disabled'>('enabled')
   const [settings, setSettings] = useStateStorage<Settings>('settings', {
-    player: 'player1',
+    player: 'media-chrome',
     src: undefined,
   })
   const [isOpen, setIsOpen] = useState(false)
@@ -40,15 +38,8 @@ export default function PlayerWithDrawer() {
       if (opacityRef.current === 'enabled') {
         opacityRef.current = 'changing'
       }
-      return null
     }
-
-    switch (settings.player) {
-      case 'player1':
-        return <Player1 src={settings.src} fullPage />
-      case 'player2':
-        return <Player2 src={settings.src} fullPage />
-    }
+    return <VideoPlayer player={settings.player} src={settings.src} fullPage />
   }, [settings.player, settings.src])
 
   return (
@@ -109,6 +100,8 @@ type PageDrawerProps = {
   onSave: (settings: Settings) => void
 }
 
+const players: PlayerKind[] = ['media-chrome', 'video-js']
+
 function PageDrawer({ settings, onSave, isOpen, onClose }: PageDrawerProps) {
   const [settingsState, setSettingsState] = useState<Settings>(settings)
 
@@ -133,8 +126,11 @@ function PageDrawer({ settings, onSave, isOpen, onClose }: PageDrawerProps) {
             mb={2}
             size="lg"
           >
-            <option value="player1">Player 1</option>
-            <option value="player2">Player 2</option>
+            {players.map((player) => (
+              <option key={'select-option-' + player} value={player}>
+                {player}
+              </option>
+            ))}
           </Select>
           <Input
             value={settingsState.src}
