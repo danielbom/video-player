@@ -1,6 +1,6 @@
 import { DeleteIcon, DragHandleIcon } from '@chakra-ui/icons'
 import { As, Box, Button, Flex, Grid, GridItem, IconButton, Input, Spacer, UnorderedList } from '@chakra-ui/react'
-import React, { useMemo } from 'react'
+import React from 'react'
 import {
   DragDropContext,
   Draggable,
@@ -12,7 +12,7 @@ import {
 import SmoothScrollbar from 'smooth-scrollbar'
 
 import { VideoPlayer } from '../../components/VideoPlayer'
-import { VideoJsPlayer } from '../../components/VideoJsPlayer'
+// import { VideoJsPlayer } from '../../components/VideoJsPlayer'
 import { Episode } from './types'
 
 type MainStatelessProps = {
@@ -44,6 +44,27 @@ export default function MainStateless({
     reorderEpisodes(newEpisodes)
   }
 
+  const videoPlayer = <VideoPlayer src={selectedEpisode?.src || ''} />
+  const episodesList = (
+    <EpisodesListDroppable onDragEnd={onDragEndReorderEpisodes}>
+      {episodes.map((it, index) => (
+        <EpisodeListItemDraggable
+          key={'list-item-' + it.src}
+          draggableId={'list-item-' + it.src}
+          index={index}
+          episode={it}
+          selectedEpisode={selectedEpisode}
+          selectEpisode={selectEpisode}
+          removeEpisode={removeEpisode}
+        />
+      ))}
+    </EpisodesListDroppable>
+  )
+
+  React.useLayoutEffect(() => {
+    SmoothScrollbar.initAll()
+  }, [])
+
   return (
     <Flex direction="column" alignItems="center" bg="gray.100" h="100vh">
       <Box maxW="1400px" w="100%" p="4">
@@ -51,94 +72,41 @@ export default function MainStateless({
 
         <Spacer h="4" />
 
-        <HorizontalMainContent
-          episodes={episodes}
-          selectedEpisode={selectedEpisode}
-          selectEpisode={selectEpisode}
-          removeEpisode={removeEpisode}
-          onDragEnd={onDragEndReorderEpisodes}
-        />
+        <HorizontalLayout episodesList={episodesList} videoPlayer={videoPlayer} />
 
-        <VerticalMainContent
-          episodes={episodes}
-          selectedEpisode={selectedEpisode}
-          selectEpisode={selectEpisode}
-          removeEpisode={removeEpisode}
-          onDragEnd={onDragEndReorderEpisodes}
-        />
+        <VerticalLayout episodesList={episodesList} videoPlayer={videoPlayer} />
       </Box>
     </Flex>
   )
 }
 
-type MainContentProps = {
-  episodes: Episode[]
-  selectedEpisode: Episode | undefined
-  selectEpisode: (episode: Episode) => void
-  removeEpisode: (episode: Episode) => void
-  onDragEnd: (result: DropResult, provided: ResponderProvided) => void
+type LayoutProps = {
+  episodesList: React.ReactNode
+  videoPlayer: React.ReactNode
 }
 
-function HorizontalMainContent({
-  episodes,
-  selectedEpisode,
-  selectEpisode,
-  removeEpisode,
-  onDragEnd,
-}: MainContentProps) {
-  React.useLayoutEffect(() => {
-    SmoothScrollbar.initAll()
-  }, [])
-
+function HorizontalLayout({ episodesList, videoPlayer }: LayoutProps) {
   return (
     <Grid templateColumns="2fr 6fr" gap="2" minW="800px" overflow="hidden" display={{ lg: 'grid', base: 'none' }}>
       <GridItem>
         <Box as="section" maxH="590px" data-scrollbar pr="2">
-          <EpisodesListDroppable onDragEnd={onDragEnd}>
-            {episodes.map((it, index) => (
-              <EpisodeListItemDraggable
-                key={'list-item-' + it.src}
-                draggableId={'list-item-' + it.src}
-                index={index}
-                episode={it}
-                selectedEpisode={selectedEpisode}
-                selectEpisode={selectEpisode}
-                removeEpisode={removeEpisode}
-              />
-            ))}
-          </EpisodesListDroppable>
+          {episodesList}
         </Box>
       </GridItem>
 
-      <GridItem>
-        <VideoJsPlayer src={selectedEpisode?.src || ''} />
-      </GridItem>
+      <GridItem>{videoPlayer}</GridItem>
     </Grid>
   )
 }
 
-function VerticalMainContent({ episodes, selectedEpisode, selectEpisode, removeEpisode, onDragEnd }: MainContentProps) {
-  const episodesElements = useMemo(() => {
-    return episodes.map((it, index) => (
-      <EpisodeListItemDraggable
-        key={'list-item-' + it.src}
-        draggableId={'list-item-' + it.src}
-        index={index}
-        episode={it}
-        selectedEpisode={selectedEpisode}
-        selectEpisode={selectEpisode}
-        removeEpisode={removeEpisode}
-      />
-    ))
-  }, [episodes, selectedEpisode, selectEpisode, removeEpisode])
-
+function VerticalLayout({ episodesList, videoPlayer }: LayoutProps) {
   return (
     <Box display={{ lg: 'none', base: 'block' }}>
-      <VideoJsPlayer src={selectedEpisode?.src || ''} />
+      {videoPlayer}
 
       <Spacer h="4" />
 
-      <EpisodesListDroppable onDragEnd={onDragEnd}>{episodesElements}</EpisodesListDroppable>
+      {episodesList}
     </Box>
   )
 }
