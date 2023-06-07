@@ -100,7 +100,7 @@ type PageDrawerProps = {
   onSave: (settings: Settings) => void
 }
 
-const players: PlayerKind[] = ['media-chrome', 'video-js']
+const players: PlayerKind[] = ['media-chrome', 'video-js', 'youtube']
 
 function PageDrawer({ settings, onSave, isOpen, onClose }: PageDrawerProps) {
   const [settingsState, setSettingsState] = useState<Settings>(settings)
