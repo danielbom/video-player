@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function useStateStorage<T>(key: string, defaultValue: T, storage = localStorage) {
+export default function useStateStorage<T>(key: string, defaultValue?: T, storage = localStorage) {
   const [value, _setValue] = useState<T>(() => {
     const value = storage.getItem(key)
     if (value) return JSON.parse(value)
