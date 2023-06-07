@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
+import './index.css'
+import useFullpage from '../../hooks/useFullpage'
 
 // https://videojs.com/guides/react/
 
@@ -17,11 +19,12 @@ type VideoJsProps = {
   controls: boolean
   responsive: boolean
   fluid: boolean
+  fullPage: boolean
   sources: VideoSource[]
   onReady?: (player: Player, videojs: VideoJs) => void
 }
 
-export const VideoJs = ({ onReady, ...options }: VideoJsProps) => {
+export const VideoJs = ({ onReady, fullPage, ...options }: VideoJsProps) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<Player>()
 
@@ -53,28 +56,29 @@ export const VideoJs = ({ onReady, ...options }: VideoJsProps) => {
     }
   }, [videoRef, options])
 
+  useFullpage(videoRef, fullPage)
+
   return (
-    <div data-vjs-player>
-      <div ref={videoRef} />
+    <div className={fullPage ? 'videojs-container fullpage' : ''}>
+      <div ref={videoRef} data-vjs-player />
     </div>
   )
 }
 
 type VideoJsPlayerProps = {
   src: string
+  fullPage?: boolean
 }
 
-export const VideoJsPlayer = ({ src }: VideoJsPlayerProps) => {
+export const VideoJsPlayer = ({ src, fullPage = false }: VideoJsPlayerProps) => {
   return (
     <VideoJs
       autoplay={false}
       controls={true}
       responsive={true}
       fluid={true}
+      fullPage={fullPage}
       sources={[{ src, type: 'video/mp4' }]}
-      onReady={(video) => {
-        console.log(video)
-      }}
     />
   )
 }

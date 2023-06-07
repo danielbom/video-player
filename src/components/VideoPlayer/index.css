@@ -19,3 +19,14 @@ media-mute-button:hover + media-volume-range.display-on-hover {
   width: 100px;
   padding: 0 10px;
 }
+
+.media-controller-container.fullpage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+  background-color: black;
+}

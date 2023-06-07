@@ -11,40 +11,46 @@ import {
   MediaFullscreenButton,
   MediaPlaybackRateButton,
 } from 'media-chrome/dist/react'
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
+import useFullpage from '../../hooks/useFullpage'
 import './index.css'
 
 type VideoPlayerProps = {
   src: string
+  fullPage?: boolean
 }
 
-export const VideoPlayer = ({ src }: VideoPlayerProps) => {
-  const videoRef = React.useRef<HTMLVideoElement>(null)
+export const VideoPlayer = ({ src, fullPage }: VideoPlayerProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useRestoreCurrentTime(videoRef, src)
   useIntervalToSaveCurrentTime(videoRef)
+  useFullpage(videoRef, fullPage)
 
   return (
-    <MediaController>
-      <video
-        ref={videoRef}
-        slot="media"
-        src={src}
-        preload="auto"
-        onDoubleClick={() => toggleFullscreenOnElement(videoRef.current!)}
-      />
-      <MediaControlBar>
-        <MediaPlayButton></MediaPlayButton>
-        <MediaTimeDisplay showDuration></MediaTimeDisplay>
-        <MediaTimeRange></MediaTimeRange>
-        <MediaPlaybackRateButton></MediaPlaybackRateButton>
-        <MediaMuteButton></MediaMuteButton>
-        <MediaVolumeRange className="display-on-hover"></MediaVolumeRange>
-        <MediaSeekBackwardButton></MediaSeekBackwardButton>
-        <MediaSeekForwardButton></MediaSeekForwardButton>
-        <MediaFullscreenButton></MediaFullscreenButton>
-      </MediaControlBar>
-    </MediaController>
+    <div className={fullPage ? 'media-controller-container fullpage' : ''}>
+      <MediaController>
+        <video
+          ref={videoRef}
+          slot="media"
+          src={src}
+          preload="auto"
+          onDoubleClick={() => toggleFullscreenOnElement(videoRef.current!)}
+          className={fullPage ? 'fullscreen' : ''}
+        />
+        <MediaControlBar>
+          <MediaPlayButton></MediaPlayButton>
+          <MediaTimeDisplay showDuration></MediaTimeDisplay>
+          <MediaTimeRange></MediaTimeRange>
+          <MediaPlaybackRateButton></MediaPlaybackRateButton>
+          <MediaMuteButton></MediaMuteButton>
+          <MediaVolumeRange className="display-on-hover"></MediaVolumeRange>
+          <MediaSeekBackwardButton></MediaSeekBackwardButton>
+          <MediaSeekForwardButton></MediaSeekForwardButton>
+          <MediaFullscreenButton></MediaFullscreenButton>
+        </MediaControlBar>
+      </MediaController>
+    </div>
   )
 }
 
@@ -52,7 +58,7 @@ const SELECTED_EPISODE_KEY = 'selectedEpisode'
 const CURRENT_TIME_KEY = 'currentTime'
 
 function useRestoreCurrentTime(videoRef: React.RefObject<HTMLVideoElement>, src: string) {
-  React.useEffect(() => {
+  useEffect(() => {
     const id = setTimeout(() => {
       const lastEpisode = localStorage.getItem(SELECTED_EPISODE_KEY)
 
@@ -73,7 +79,7 @@ function useRestoreCurrentTime(videoRef: React.RefObject<HTMLVideoElement>, src:
 }
 
 function useIntervalToSaveCurrentTime(videoRef: React.RefObject<HTMLVideoElement>) {
-  React.useEffect(() => {
+  useEffect(() => {
     function saveCurrentTime() {
       if (videoRef.current && videoIsPlaying(videoRef.current)) {
         localStorage.setItem(CURRENT_TIME_KEY, videoRef.current.currentTime.toString())
