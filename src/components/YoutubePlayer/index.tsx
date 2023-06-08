@@ -1,13 +1,39 @@
+import { useImperativeHandle, useRef, useState } from 'react'
 import YouTube from 'react-youtube'
+import { PlayerHandle } from '../VideoPlayer/types'
 import './index.css'
 
 type YoutubePlayerProps = {
-  src: string
+  src?: string
   fullPage?: boolean
+  playerHandleRef?: React.Ref<PlayerHandle>
 }
 
-export function YoutubePlayer({ src, fullPage }: YoutubePlayerProps) {
-  return <YouTube videoId={extractVideoIdFromUrl(src)} iframeClassName={fullPage ? 'fullpage' : ''} />
+export function YoutubePlayer({ src, fullPage, playerHandleRef: playerRef }: YoutubePlayerProps) {
+  const [autoplay, setAutoplay] = useState(false)
+  const youtubeRef = useRef<YouTube>(null)
+
+  useImperativeHandle(playerRef, () => ({
+    play: () => {
+      youtubeRef.current?.getInternalPlayer()?.playVideo()
+      setAutoplay(true)
+    },
+    pause: () => {
+      youtubeRef.current?.getInternalPlayer()?.pauseVideo()
+      setAutoplay(false)
+    },
+  }))
+
+  return (
+    <YouTube
+      opts={{ playerVars: { autoplay: autoplay ? 1 : 0 } }}
+      ref={youtubeRef}
+      videoId={src && extractVideoIdFromUrl(src)}
+      iframeClassName={fullPage ? 'fullpage' : ''}
+      onPause={() => setAutoplay(false)}
+      onPlay={() => setAutoplay(true)}
+    />
+  )
 }
 
 function extractVideoIdFromUrl(url: string) {

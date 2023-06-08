@@ -1,4 +1,4 @@
-import { AddIcon, DeleteIcon, SettingsIcon } from '@chakra-ui/icons'
+import { AddIcon, DeleteIcon, SettingsIcon, HamburgerIcon } from '@chakra-ui/icons'
 import {
   IconButton,
   Drawer,
@@ -28,9 +28,14 @@ import {
   FormErrorMessage,
   Tooltip,
   useToast,
+  MenuButton,
+  Menu,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react'
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
+import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
 import { checkArray, TypeCheck } from '../../lib/type-check'
 
@@ -48,13 +53,16 @@ type PlayerState = {
 type Settings = {
   player: PlayerKind
   src: string | undefined
+  current: number
   playlist: PlaylistItem[]
 }
 
 export default function PlayerWithDrawer() {
   const btnRef = useRef<HTMLDivElement>(null)
+  const playerHandleRef = useRef<PlayerHandle>(null)
   const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
   const [drawerIsOpen, setDrawerIsOpen] = useState(false)
+  const [playing, setPlaying] = useState(false)
   const [state, setState] = useState<PlayerState>({ player: 'media-chrome', src: undefined })
 
   const onSettingsInit = (settings?: Settings) => {
@@ -71,7 +79,7 @@ export default function PlayerWithDrawer() {
         opacityRef.current = 'to-disabled'
       }
     }
-    return <VideoPlayer player={state.player} src={state.src} fullPage />
+    return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
   }, [state.player, state.src])
 
   useEffect(() => {
@@ -113,7 +121,7 @@ export default function PlayerWithDrawer() {
         <IconButton
           icon={<SettingsIcon />}
           aria-label="Menu"
-          variant="outline"
+          variant="ghost"
           colorScheme="blue"
           size="lg"
           onClick={() => setDrawerIsOpen(true)}
@@ -124,12 +132,38 @@ export default function PlayerWithDrawer() {
         isOpen={drawerIsOpen}
         onClose={onClose}
         state={state}
-        onSave={setState}
+        onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
         onSettingsInit={onSettingsInit}
+        onCommand={(event, payload) => {
+          switch (event) {
+            case 'play':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (playing) playerHandleRef.current.pause()
+              else playerHandleRef.current.play()
+              setPlaying((prev) => !prev)
+              setState({ player: payload.player, src: payload.src })
+              break
+            case 'next':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (playing) playerHandleRef.current.play()
+              setState({ player: payload.player, src: payload.src })
+              break
+            case 'previous':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (playing) playerHandleRef.current.play()
+              setState({ player: payload.player, src: payload.src })
+              break
+          }
+        }}
       />
     </Box>
   )
 }
+
+type Command =
+  | { type: 'play'; payload: PlaylistItem }
+  | { type: 'next'; payload: PlaylistItem }
+  | { type: 'previous'; payload: PlaylistItem }
 
 type PageDrawerProps = {
   state: PlayerState
@@ -137,9 +171,10 @@ type PageDrawerProps = {
   onClose: () => void
   onSave: (state: PlayerState) => void
   onSettingsInit: (settings?: Settings) => void
+  onCommand: <C extends Command>(event: C['type'], payload: C['payload']) => void
 }
 
-function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDrawerProps) {
+function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onCommand }: PageDrawerProps) {
   const toast = useToast()
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const inputFileRef = useRef<HTMLInputElement>(null)
@@ -150,6 +185,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
     {
       player: 'media-chrome',
       src: undefined,
+      current: 0,
       playlist: [],
     },
     { onInit: onSettingsInit },
@@ -251,6 +287,63 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                   size="sm"
                   onClick={() => setAddToPlaylistIsOpen(true)}
                 />
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<HamburgerIcon />}
+                    aria-label="Playlist options"
+                    size="sm"
+                    colorScheme="gray"
+                    variant="outline"
+                  />
+                  <MenuList>
+                    <MenuItem
+                      command="⇧K"
+                      onClick={() => {
+                        if (settings.playlist.length > 0) {
+                          const item = settings.playlist[settings.current]
+                          onCommand('play', item)
+                          updateSetting({ src: item.src, player: item.player })
+                        }
+                      }}
+                      disabled={settings.playlist.length === 0}
+                    >
+                      Play / Pause
+                    </MenuItem>
+                    <MenuItem
+                      command="⇧N"
+                      onClick={() => {
+                        if (settings.current < settings.playlist.length - 1) {
+                          const item = settings.playlist[settings.current + 1]
+                          onCommand('next', item)
+                          updateSetting({ src: item.src, player: item.player, current: settings.current + 1 })
+                        }
+                      }}
+                      disabled={!(settings.current < settings.playlist.length - 1)}
+                    >
+                      Next
+                    </MenuItem>
+                    <MenuItem
+                      command="⇧P"
+                      onClick={() => {
+                        if (settings.current > 0) {
+                          const item = settings.playlist[settings.current - 1]
+                          onCommand('previous', item)
+                          updateSetting({ src: item.src, player: item.player, current: settings.current - 1 })
+                        }
+                      }}
+                      disabled={!(settings.current > 0)}
+                    >
+                      Previous
+                    </MenuItem>
+                    <MenuItem command="⇧I" onClick={() => inputFileRef.current?.click()}>
+                      Import
+                    </MenuItem>
+                    <MenuItem command="⇧E" onClick={() => exportPlayerData()} disabled={settings.playlist.length === 0}>
+                      Export
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
               </Box>
               <Heading as="h4" size="md" mb={2}>
                 Playlist
@@ -268,7 +361,9 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                         justifyContent="flex-start"
                         bg={selected ? 'red.500' : undefined}
                         colorScheme={selected ? 'red' : undefined}
-                        onClick={() => updateSetting({ src: selected ? state.src : item.src })}
+                        onClick={() =>
+                          updateSetting(selected ? { src: state.src, current: 0 } : { src: item.src, current: index })
+                        }
                       >
                         <Tooltip label={item.title} placement="top">
                           <Text overflow="hidden" textOverflow="ellipsis">
@@ -283,14 +378,6 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
             </Box>
           </DrawerBody>
 
-          <DrawerFooter>
-            <Button colorScheme="green" mr={3} onClick={() => exportPlayerData()}>
-              Export
-            </Button>
-            <Button colorScheme="green" mr={3} onClick={() => inputFileRef.current?.click()}>
-              Import
-            </Button>
-          </DrawerFooter>
           <DrawerFooter>
             <Button variant="outline" mr={3} onClick={onClose}>
               Cancel
@@ -578,5 +665,6 @@ const playlistItemTypeCheck: TypeCheck<PlaylistItem> = {
 const settingsTypeCheck: TypeCheck<Settings> = {
   player: (it) => typeof it === 'string' && players.includes(it as PlayerKind),
   src: (it) => typeof it === 'string' || typeof it === 'undefined',
+  current: (it) => typeof it === 'number',
   playlist: (it) => checkArray(it, playlistItemTypeCheck),
 }
