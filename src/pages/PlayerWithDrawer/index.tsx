@@ -1,4 +1,4 @@
-import { AddIcon, DeleteIcon, HamburgerIcon } from '@chakra-ui/icons'
+import { AddIcon, DeleteIcon, SettingsIcon } from '@chakra-ui/icons'
 import {
   IconButton,
   Drawer,
@@ -57,7 +57,7 @@ export default function PlayerWithDrawer() {
     src: undefined,
     playlist: [],
   })
-  const btnRef = useRef<HTMLButtonElement>(null)
+  const btnRef = useRef<HTMLDivElement>(null)
   const inputFileRef = useRef<HTMLInputElement>(null)
 
   const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
@@ -147,20 +147,16 @@ export default function PlayerWithDrawer() {
         {player}
       </Box>
 
-      <IconButton
-        icon={<HamburgerIcon />}
-        transition="opacity 0.2s"
-        aria-label="Menu"
-        variant="outline"
-        colorScheme="blue"
-        size="lg"
-        mb={2}
-        ref={btnRef}
-        onClick={() => setDrawerIsOpen(true)}
-        position="fixed"
-        top="4"
-        right="4"
-      />
+      <Box ref={btnRef} transition="opacity 0.5s" position="fixed" top="4" right="4">
+        <IconButton
+          icon={<SettingsIcon />}
+          aria-label="Menu"
+          variant="outline"
+          colorScheme="blue"
+          size="lg"
+          onClick={() => setDrawerIsOpen(true)}
+        />
+      </Box>
       <PlayerDrawer
         isOpen={drawerIsOpen}
         onClose={onClose}
