@@ -1,10 +1,20 @@
 import { useState } from 'react'
 
-export default function useStateStorage<T>(key: string, defaultValue?: T, storage = localStorage) {
+type UseStateStorageOptions<T> = {
+  storage?: Storage
+  onInit?: (value?: T) => void
+}
+
+export default function useStateStorage<T>(
+  key: string,
+  defaultValue?: T,
+  { storage = localStorage, onInit = (value?: T) => value }: UseStateStorageOptions<T> = {},
+) {
   const [value, _setValue] = useState<T>(() => {
     const value = storage.getItem(key)
-    if (value) return JSON.parse(value)
-    return defaultValue
+    const result = value ? JSON.parse(value) : defaultValue
+    onInit(result)
+    return result
   })
 
   const setValue: React.Dispatch<React.SetStateAction<T>> = (value) => {

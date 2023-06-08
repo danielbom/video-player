@@ -40,6 +40,11 @@ type PlaylistItem = {
   player: PlayerKind
 }
 
+type PlayerState = {
+  player: PlayerKind
+  src: string | undefined
+}
+
 type Settings = {
   player: PlayerKind
   src: string | undefined
@@ -47,32 +52,27 @@ type Settings = {
 }
 
 export default function PlayerWithDrawer() {
-  const toast = useToast()
-  const [drawerIsOpen, setDrawerIsOpen] = useState(false)
-  const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
-  const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
-  const [settingsState, setSettingsState] = useState<Settings | null>(null)
-  const [settings, setSettings] = useStateStorage<Settings>('settings', {
-    player: 'media-chrome',
-    src: undefined,
-    playlist: [],
-  })
   const btnRef = useRef<HTMLDivElement>(null)
-  const inputFileRef = useRef<HTMLInputElement>(null)
+  const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
+  const [drawerIsOpen, setDrawerIsOpen] = useState(false)
+  const [state, setState] = useState<PlayerState>({ player: 'media-chrome', src: undefined })
 
-  const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
-  const showSuccess = (title: string) => toast({ status: 'success', title, isClosable: true })
+  const onSettingsInit = (settings?: Settings) => {
+    if (!settings) return
+    setState({ player: settings.player, src: settings.src })
+  }
+
   const onClose = () => setDrawerIsOpen(false)
 
   const player = useMemo(() => {
-    const shouldDisable = settings.player === 'youtube' && !settings.src
+    const shouldDisable = state.player === 'youtube' && !state.src
     if (shouldDisable) {
       if (opacityRef.current === 'enabled') {
         opacityRef.current = 'to-disabled'
       }
     }
-    return <VideoPlayer player={settings.player} src={settings.src} fullPage />
-  }, [settings.player, settings.src])
+    return <VideoPlayer player={state.player} src={state.src} fullPage />
+  }, [state.player, state.src])
 
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
@@ -103,6 +103,64 @@ export default function PlayerWithDrawer() {
     return () => window.removeEventListener('pointermove', onPointerMove)
   }, [])
 
+  return (
+    <Box>
+      <Box bg="gray.100" w="100vw" h="100vh">
+        {player}
+      </Box>
+
+      <Box ref={btnRef} transition="opacity 0.5s" position="fixed" top="4" right="4">
+        <IconButton
+          icon={<SettingsIcon />}
+          aria-label="Menu"
+          variant="outline"
+          colorScheme="blue"
+          size="lg"
+          onClick={() => setDrawerIsOpen(true)}
+        />
+      </Box>
+
+      <PlayerDrawer
+        isOpen={drawerIsOpen}
+        onClose={onClose}
+        state={state}
+        onSave={setState}
+        onSettingsInit={onSettingsInit}
+      />
+    </Box>
+  )
+}
+
+type PageDrawerProps = {
+  state: PlayerState
+  isOpen: boolean
+  onClose: () => void
+  onSave: (state: PlayerState) => void
+  onSettingsInit: (settings?: Settings) => void
+}
+
+function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDrawerProps) {
+  const toast = useToast()
+  const inputFileRef = useRef<HTMLInputElement>(null)
+  const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
+  const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
+  const [settings, setSettings] = useStateStorage<Settings>(
+    'settings',
+    {
+      player: 'media-chrome',
+      src: undefined,
+      playlist: [],
+    },
+    { onInit: onSettingsInit },
+  )
+
+  const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
+  const showSuccess = (title: string) => toast({ status: 'success', title, isClosable: true })
+
+  function updateSettingState(partialSettings: Partial<Settings>) {
+    setSettings((prev) => ({ ...prev, ...partialSettings }))
+  }
+
   function importPlayerData(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
@@ -129,7 +187,7 @@ export default function PlayerWithDrawer() {
 
   function exportPlayerData() {
     const fileName = 'player.json'
-    const data = JSON.stringify(settings)
+    const data = JSON.stringify(state)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
 
@@ -142,144 +200,10 @@ export default function PlayerWithDrawer() {
     showSuccess('Player data exported')
   }
 
-  return (
-    <Box>
-      <Box bg="gray.100" w="100vw" h="100vh">
-        {player}
-      </Box>
-
-      <Box ref={btnRef} transition="opacity 0.5s" position="fixed" top="4" right="4">
-        <IconButton
-          icon={<SettingsIcon />}
-          aria-label="Menu"
-          variant="outline"
-          colorScheme="blue"
-          size="lg"
-          onClick={() => setDrawerIsOpen(true)}
-        />
-      </Box>
-      <PlayerDrawer
-        isOpen={drawerIsOpen}
-        onClose={onClose}
-        settings={settings}
-        onSave={(newSettings) => {
-          const shouldOpenYoutubeModal = isYoutubeUrl(newSettings.src || '') && newSettings.player !== 'youtube'
-          if (shouldOpenYoutubeModal) {
-            setYoutubeModalIsOpen(true)
-            setSettingsState(newSettings)
-          } else {
-            setSettings(newSettings)
-            onClose()
-          }
-        }}
-        onClickExport={exportPlayerData}
-        onClickImport={() => inputFileRef.current?.click()}
-      />
-      <YoutubeUrlDetectedModal
-        url={settingsState?.src || ''}
-        isOpen={youtubeModalIsOpen}
-        onClose={(event) => {
-          if (!settingsState) {
-            throw new Error('settingsState is null')
-          }
-          setYoutubeModalIsOpen(false)
-          switch (event) {
-            case 'confirmed':
-              setSettings({ ...settingsState, player: 'youtube' })
-              onClose()
-              break
-            case 'denied':
-              setSettings(settingsState)
-              onClose()
-              break
-          }
-          setSettingsState(null)
-        }}
-      />
-      <input
-        ref={inputFileRef}
-        type="file"
-        accept="application/json"
-        style={{ display: 'none' }}
-        onChange={importPlayerData}
-      />
-    </Box>
-  )
-}
-
-const players: PlayerKind[] = ['media-chrome', 'video-js', 'youtube']
-
-type SelectPlayerProps = {
-  value: PlayerKind
-  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void
-}
-
-function PlayerSelect({ value, onChange }: SelectPlayerProps) {
-  return (
-    <Select value={value} onChange={onChange} variant="filled" mb={2} size="lg">
-      {players.map((player) => (
-        <option key={'select-option-' + player} value={player}>
-          {player}
-        </option>
-      ))}
-    </Select>
-  )
-}
-
-type PlayerInputProps = {
-  value: string | undefined
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
-  placeholder: string
-  isInvalid?: boolean
-}
-
-function PlayerInput({ value, onChange, placeholder, isInvalid }: PlayerInputProps) {
-  return (
-    <Input
-      isInvalid={isInvalid}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      size="lg"
-      variant="filled"
-    />
-  )
-}
-
-type PageDrawerProps = {
-  isOpen: boolean
-  onClose: () => void
-  settings: Settings
-  onSave: (settings: Settings) => void
-  onClickExport: () => void
-  onClickImport: () => void
-}
-
-function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClickImport }: PageDrawerProps) {
-  const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
-  const [settingsState, setSettingsState] = useState<Settings>(settings)
-
-  function updateSettingState(partialSettings: Partial<Settings>) {
-    setSettingsState((prev) => ({ ...prev, ...partialSettings }))
-  }
-
-  useEffect(() => setSettingsState(settings), [settings])
-
-  const hasSelected = settingsState.playlist?.some((item) => item.src === settingsState.src)
+  const hasSelected = settings.playlist.some((item) => item.src === settings.src)
 
   return (
     <>
-      <AddToPlaylistModal
-        isOpen={addToPlaylistIsOpen}
-        onClose={(event, item) => {
-          switch (event) {
-            case 'confirmed':
-              updateSettingState({ playlist: settingsState.playlist.concat(item!) })
-              break
-          }
-          setAddToPlaylistIsOpen(false)
-        }}
-      />
       <Drawer isOpen={isOpen} placement="right" size="md" onClose={onClose}>
         <DrawerOverlay />
         <DrawerContent>
@@ -292,11 +216,11 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
                 Player
               </Heading>
               <PlayerSelect
-                value={settingsState.player}
+                value={settings.player}
                 onChange={(e) => updateSettingState({ player: e.target.value as any })}
               />
               <PlayerInput
-                value={settingsState.src}
+                value={settings.src}
                 onChange={(e) => updateSettingState({ src: e.target.value as any })}
                 placeholder="Video source"
               />
@@ -312,8 +236,8 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
                     size="sm"
                     onClick={() =>
                       updateSettingState({
-                        playlist: settingsState.playlist.filter((it) => it.src !== settingsState.src),
-                        src: settings.src,
+                        playlist: settings.playlist.filter((it) => it.src !== settings.src),
+                        src: state.src,
                       })
                     }
                   />
@@ -331,8 +255,8 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
                 Playlist
               </Heading>
               <VStack as="ol" listStyleType="none">
-                {settingsState.playlist.map((item, index) => {
-                  const selected = item.src === settingsState.src
+                {settings.playlist.map((item, index) => {
+                  const selected = item.src === settings.src
                   return (
                     <Box as="li" w="100%" key={'playlist-item-' + index + '/' + item.src}>
                       <Button
@@ -342,7 +266,7 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
                         justifyContent="flex-start"
                         bg={selected ? 'red.500' : undefined}
                         colorScheme={selected ? 'red' : undefined}
-                        onClick={() => updateSettingState({ src: selected ? settings.src : item.src })}
+                        onClick={() => updateSettingState({ src: selected ? state.src : item.src })}
                       >
                         <Tooltip label={item.title} placement="top">
                           <Text overflow="hidden" textOverflow="ellipsis">
@@ -358,10 +282,10 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
           </DrawerBody>
 
           <DrawerFooter>
-            <Button colorScheme="green" mr={3} onClick={() => onClickExport()}>
+            <Button colorScheme="green" mr={3} onClick={() => exportPlayerData()}>
               Export
             </Button>
-            <Button colorScheme="green" mr={3} onClick={() => onClickImport()}>
+            <Button colorScheme="green" mr={3} onClick={() => inputFileRef.current?.click()}>
               Import
             </Button>
           </DrawerFooter>
@@ -369,12 +293,60 @@ function PlayerDrawer({ settings, onSave, isOpen, onClose, onClickExport, onClic
             <Button variant="outline" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="blue" onClick={() => onSave(settingsState)}>
+            <Button
+              colorScheme="blue"
+              onClick={() => {
+                const shouldOpenYoutubeModal = isYoutubeUrl(settings.src || '') && settings.player !== 'youtube'
+                if (shouldOpenYoutubeModal) {
+                  setYoutubeModalIsOpen(true)
+                } else {
+                  onSave(settings)
+                  onClose()
+                }
+              }}
+            >
               Save
             </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+      <YoutubeUrlDetectedModal
+        url={settings?.src || ''}
+        isOpen={youtubeModalIsOpen}
+        onClose={(event) => {
+          if (!settings) {
+            throw new Error('settingsState is null')
+          }
+          setYoutubeModalIsOpen(false)
+          switch (event) {
+            case 'confirmed':
+              updateSettingState({ player: 'youtube' })
+              onClose()
+              break
+            case 'denied':
+              onClose()
+              break
+          }
+        }}
+      />
+      <AddToPlaylistModal
+        isOpen={addToPlaylistIsOpen}
+        onClose={(event, item) => {
+          switch (event) {
+            case 'confirmed':
+              updateSettingState({ playlist: settings.playlist.concat(item!) })
+              break
+          }
+          setAddToPlaylistIsOpen(false)
+        }}
+      />
+      <input
+        ref={inputFileRef}
+        type="file"
+        accept="application/json"
+        style={{ display: 'none' }}
+        onChange={importPlayerData}
+      />
     </>
   )
 }
@@ -535,6 +507,45 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
         </ModalFooter>
       </ModalContent>
     </Modal>
+  )
+}
+
+const players: PlayerKind[] = ['media-chrome', 'video-js', 'youtube']
+
+type SelectPlayerProps = {
+  value: PlayerKind
+  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void
+}
+
+function PlayerSelect({ value, onChange }: SelectPlayerProps) {
+  return (
+    <Select value={value} onChange={onChange} variant="filled" mb={2} size="lg">
+      {players.map((player) => (
+        <option key={'select-option-' + player} value={player}>
+          {player}
+        </option>
+      ))}
+    </Select>
+  )
+}
+
+type PlayerInputProps = {
+  value: string | undefined
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder: string
+  isInvalid?: boolean
+}
+
+function PlayerInput({ value, onChange, placeholder, isInvalid }: PlayerInputProps) {
+  return (
+    <Input
+      isInvalid={isInvalid}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      size="lg"
+      variant="filled"
+    />
   )
 }
 
