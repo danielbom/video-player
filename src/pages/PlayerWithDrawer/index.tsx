@@ -12,6 +12,14 @@ import {
   Button,
   Select,
   Input,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  Link,
 } from '@chakra-ui/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
@@ -23,7 +31,9 @@ type Settings = {
 }
 
 export default function PlayerWithDrawer() {
-  const opacityRef = useRef<'enabled' | 'changing' | 'disabled'>('enabled')
+  const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
+  const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
+  const [settingsState, setSettingsState] = useState<Settings | null>(null)
   const [settings, setSettings] = useStateStorage<Settings>('settings', {
     player: 'media-chrome',
     src: undefined,
@@ -35,48 +45,51 @@ export default function PlayerWithDrawer() {
 
   const player = useMemo(() => {
     if (!settings.src) {
-      if (opacityRef.current === 'enabled') {
-        opacityRef.current = 'changing'
+      if (opacityRef.current === 'enabled' || settings.player === 'youtube') {
+        opacityRef.current = 'to-disabled'
       }
     }
     return <VideoPlayer player={settings.player} src={settings.src} fullPage />
   }, [settings.player, settings.src])
 
+  useEffect(() => {
+    function onPointerMove(e: PointerEvent) {
+      if (!btnRef.current) return
+      switch (opacityRef.current) {
+        case 'enabled': {
+          const position = btnRef.current.getBoundingClientRect()
+          const center = { x: position.left + position.width / 2, y: position.top + position.height / 2 }
+          const radius = 100
+          const centerDistance = Math.sqrt(Math.pow(center.x - e.clientX, 2) + Math.pow(center.y - e.clientY, 2))
+          const realDistance = centerDistance - radius
+          const distance = realDistance < 0 ? 0 : realDistance
+          // const opacity = Math.max(1 - distance / 200, 0).toFixed(3)
+          const opacity = distance > 200 ? 0 : 1
+          btnRef.current.style.setProperty('opacity', opacity.toString())
+          break
+        }
+        case 'to-disabled': {
+          opacityRef.current = 'disabled'
+          btnRef.current.style.setProperty('opacity', '1')
+          break
+        }
+        case 'disabled':
+          return
+      }
+    }
+    window.addEventListener('pointermove', onPointerMove)
+    return () => window.removeEventListener('pointermove', onPointerMove)
+  }, [])
+
   return (
     <Box>
-      <Box
-        bg="gray.100"
-        w="100vw"
-        h="100vh"
-        onPointerMove={(e) => {
-          if (!btnRef.current) return
-          switch (opacityRef.current) {
-            case 'enabled': {
-              const position = btnRef.current.getBoundingClientRect()
-              const center = { x: position.left + position.width / 2, y: position.top + position.height / 2 }
-              const radius = 100
-              const centerDistance = Math.sqrt(Math.pow(center.x - e.clientX, 2) + Math.pow(center.y - e.clientY, 2))
-              const realDistance = centerDistance - radius
-              const distance = realDistance < 0 ? 0 : realDistance
-              const opacity = Math.max(1 - distance / 200, 0).toFixed(3)
-              btnRef.current.style.setProperty('opacity', opacity.toString())
-              break
-            }
-            case 'changing': {
-              opacityRef.current = 'disabled'
-              btnRef.current.style.setProperty('opacity', '1')
-              break
-            }
-            case 'disabled':
-              return
-          }
-        }}
-      >
+      <Box bg="gray.100" w="100vw" h="100vh">
         {player}
       </Box>
 
       <IconButton
         icon={<HamburgerIcon />}
+        transition="opacity 0.2s"
         aria-label="Menu"
         variant="outline"
         colorScheme="blue"
@@ -88,7 +101,42 @@ export default function PlayerWithDrawer() {
         top="4"
         right="4"
       />
-      <PageDrawer isOpen={isOpen} onClose={onClose} settings={settings} onSave={setSettings} />
+      <PageDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        settings={settings}
+        onSave={(newSettings) => {
+          const shouldOpenYoutubeModal = isYoutubeUrl(newSettings.src || '') && newSettings.player !== 'youtube'
+          if (shouldOpenYoutubeModal) {
+            setYoutubeModalIsOpen(true)
+            setSettingsState(newSettings)
+          } else {
+            setSettings(newSettings)
+            onClose()
+          }
+        }}
+      />
+      <YoutubeUrlDetectedModal
+        url={settingsState?.src || ''}
+        isOpen={youtubeModalIsOpen}
+        onClose={(event) => {
+          if (!settingsState) {
+            throw new Error('settingsState is null')
+          }
+          setYoutubeModalIsOpen(false)
+          switch (event) {
+            case 'confirmed':
+              setSettings({ ...settingsState, player: 'youtube' })
+              onClose()
+              break
+            case 'denied':
+              setSettings(settingsState)
+              onClose()
+              break
+          }
+          setSettingsState(null)
+        }}
+      />
     </Box>
   )
 }
@@ -146,17 +194,64 @@ function PageDrawer({ settings, onSave, isOpen, onClose }: PageDrawerProps) {
           <Button variant="outline" mr={3} onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            colorScheme="blue"
-            onClick={() => {
-              onSave(settingsState)
-              onClose()
-            }}
-          >
+          <Button colorScheme="blue" onClick={() => onSave(settingsState)}>
             Save
           </Button>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
   )
+}
+
+type YoutubeUrlDetectedModalProps = {
+  url: string
+  isOpen: boolean
+  onClose: (event: 'confirmed' | 'denied' | 'closed') => void
+}
+
+function YoutubeUrlDetectedModal({ url, isOpen, onClose }: YoutubeUrlDetectedModalProps) {
+  return (
+    <Modal
+      isCentered
+      onClose={() => onClose('closed')}
+      isOpen={isOpen}
+      motionPreset="slideInBottom"
+      size="md"
+      scrollBehavior="inside"
+    >
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader bgColor="red" color="white">
+          Youtube URL detected
+        </ModalHeader>
+        <ModalCloseButton color="white" />
+        <ModalBody textAlign="center">
+          The current URL is a Youtube URL.
+          <br />
+          Do you want to use the Youtube player instead?
+          <br />
+          <Box mt={2}>
+            <Link color="blue" href={url}>
+              {url}
+            </Link>
+          </Box>
+        </ModalBody>
+        <ModalFooter>
+          <Button autoFocus colorScheme="blue" onClick={() => onClose('confirmed')}>
+            Yes
+          </Button>
+          <Button colorScheme="red" mx={3} onClick={() => onClose('denied')}>
+            No
+          </Button>
+          <Button variant="outline" onClick={() => onClose('closed')}>
+            Cancel
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+function isYoutubeUrl(url: string) {
+  return url.includes('youtube') || url.includes('youtu.be')
 }
