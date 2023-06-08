@@ -9,7 +9,6 @@ import {
   DropResult,
   ResponderProvided,
 } from 'react-beautiful-dnd'
-import SmoothScrollbar from 'smooth-scrollbar'
 
 import { VideoPlayer } from '../../components/VideoPlayer'
 import { Episode } from './types'
@@ -59,10 +58,6 @@ export default function MainStateless({
       ))}
     </EpisodesListDroppable>
   )
-
-  React.useLayoutEffect(() => {
-    SmoothScrollbar.initAll()
-  }, [])
 
   return (
     <Flex direction="column" alignItems="center" bg="gray.100" h="100vh">
