@@ -22,6 +22,14 @@ export function YoutubePlayer({ src, fullPage, playerHandleRef: playerRef }: You
       youtubeRef.current?.getInternalPlayer()?.pauseVideo()
       setAutoplay(false)
     },
+    fullscreen: () => {
+      youtubeRef.current
+        ?.getInternalPlayer()
+        ?.getIframe()
+        .then((iframe) => {
+          ;(iframe.querySelector('.ytp-fullscreen-button.ytp-button') as HTMLButtonElement)?.click()
+        })
+    },
   }))
 
   return (

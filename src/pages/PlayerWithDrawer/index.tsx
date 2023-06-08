@@ -33,7 +33,7 @@ import {
   MenuList,
   MenuItem,
 } from '@chakra-ui/react'
-import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
@@ -111,6 +111,35 @@ export default function PlayerWithDrawer() {
     return () => window.removeEventListener('pointermove', onPointerMove)
   }, [])
 
+  const onCommand = useCallback(
+    ({ type, payload }: Command) => {
+      switch (type) {
+        case 'play':
+          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+          if (playing) playerHandleRef.current.pause()
+          else playerHandleRef.current.play()
+          setPlaying((prev) => !prev)
+          setState({ player: payload.player, src: payload.src })
+          break
+        case 'next':
+          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+          if (playing) playerHandleRef.current.play()
+          setState({ player: payload.player, src: payload.src })
+          break
+        case 'previous':
+          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+          if (playing) playerHandleRef.current.play()
+          setState({ player: payload.player, src: payload.src })
+          break
+        case 'fullscreen':
+          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+          playerHandleRef.current.fullscreen()
+          break
+      }
+    },
+    [playing],
+  )
+
   return (
     <Box>
       <Box bg="gray.100" w="100vw" h="100vh">
@@ -134,27 +163,7 @@ export default function PlayerWithDrawer() {
         state={state}
         onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
         onSettingsInit={onSettingsInit}
-        onCommand={(event, payload) => {
-          switch (event) {
-            case 'play':
-              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-              if (playing) playerHandleRef.current.pause()
-              else playerHandleRef.current.play()
-              setPlaying((prev) => !prev)
-              setState({ player: payload.player, src: payload.src })
-              break
-            case 'next':
-              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-              if (playing) playerHandleRef.current.play()
-              setState({ player: payload.player, src: payload.src })
-              break
-            case 'previous':
-              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-              if (playing) playerHandleRef.current.play()
-              setState({ player: payload.player, src: payload.src })
-              break
-          }
-        }}
+        onCommand={onCommand}
       />
     </Box>
   )
@@ -164,6 +173,7 @@ type Command =
   | { type: 'play'; payload: PlaylistItem }
   | { type: 'next'; payload: PlaylistItem }
   | { type: 'previous'; payload: PlaylistItem }
+  | { type: 'fullscreen'; payload?: null }
 
 type PageDrawerProps = {
   state: PlayerState
@@ -171,7 +181,7 @@ type PageDrawerProps = {
   onClose: () => void
   onSave: (state: PlayerState) => void
   onSettingsInit: (settings?: Settings) => void
-  onCommand: <C extends Command>(event: C['type'], payload: C['payload']) => void
+  onCommand: (command: Command) => void
 }
 
 function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onCommand }: PageDrawerProps) {
@@ -192,6 +202,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
   )
 
   const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
+  const showWarning = (title: string) => toast({ status: 'warning', title, isClosable: true })
   const showSuccess = (title: string) => toast({ status: 'success', title, isClosable: true })
 
   function updateSetting(partialSettings: Partial<Settings>) {
@@ -235,6 +246,82 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
     URL.revokeObjectURL(url)
     showSuccess('Playlist exported')
   }
+
+  const onClick = useCallback(
+    (event: 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export') => {
+      switch (event) {
+        case 'play-pause':
+          if (settings.playlist.length > 0) {
+            const item = settings.playlist[settings.current]
+            onCommand({ type: 'play', payload: item })
+            updateSetting({ src: item.src, player: item.player })
+          } else {
+            showWarning('Playlist is empty')
+          }
+          break
+        case 'next':
+          if (settings.current < settings.playlist.length - 1) {
+            const item = settings.playlist[settings.current + 1]
+            onCommand({ type: 'next', payload: item })
+            updateSetting({ src: item.src, player: item.player, current: settings.current + 1 })
+          } else {
+            showWarning('You are at the end of the playlist')
+          }
+          break
+        case 'previous':
+          if (settings.current > 0) {
+            const item = settings.playlist[settings.current - 1]
+            onCommand({ type: 'previous', payload: item })
+            updateSetting({ src: item.src, player: item.player, current: settings.current - 1 })
+          } else {
+            showWarning('You are at the beginning of the playlist')
+          }
+          break
+        case 'fullscreen':
+          onCommand({ type: 'fullscreen', payload: null })
+          break
+        case 'import':
+          inputFileRef.current?.click()
+          break
+        case 'export':
+          exportPlayerData()
+          break
+      }
+    },
+    [settings, onCommand],
+  )
+
+  useEffect(() => {
+    let lock = false
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      if (lock) return
+      lock = true
+      setTimeout(() => (lock = false), 100)
+      switch (e.key) {
+        case 'K':
+          onClick('play-pause')
+          break
+        case 'L':
+          onClick('next')
+          break
+        case 'J':
+          onClick('previous')
+          break
+        case 'I':
+          onClick('import')
+          break
+        case 'E':
+          onClick('export')
+          break
+        case 'F':
+          onClick('fullscreen')
+          break
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClick])
 
   const hasSelected = settings.playlist.some((item) => item.src === settings.src)
 
@@ -299,47 +386,25 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
                   <MenuList>
                     <MenuItem
                       command="⇧K"
-                      onClick={() => {
-                        if (settings.playlist.length > 0) {
-                          const item = settings.playlist[settings.current]
-                          onCommand('play', item)
-                          updateSetting({ src: item.src, player: item.player })
-                        }
-                      }}
+                      onClick={() => onClick('play-pause')}
                       disabled={settings.playlist.length === 0}
                     >
                       Play / Pause
                     </MenuItem>
                     <MenuItem
                       command="⇧N"
-                      onClick={() => {
-                        if (settings.current < settings.playlist.length - 1) {
-                          const item = settings.playlist[settings.current + 1]
-                          onCommand('next', item)
-                          updateSetting({ src: item.src, player: item.player, current: settings.current + 1 })
-                        }
-                      }}
+                      onClick={() => onClick('next')}
                       disabled={!(settings.current < settings.playlist.length - 1)}
                     >
                       Next
                     </MenuItem>
-                    <MenuItem
-                      command="⇧P"
-                      onClick={() => {
-                        if (settings.current > 0) {
-                          const item = settings.playlist[settings.current - 1]
-                          onCommand('previous', item)
-                          updateSetting({ src: item.src, player: item.player, current: settings.current - 1 })
-                        }
-                      }}
-                      disabled={!(settings.current > 0)}
-                    >
+                    <MenuItem command="⇧P" onClick={() => onClick('previous')} disabled={!(settings.current > 0)}>
                       Previous
                     </MenuItem>
-                    <MenuItem command="⇧I" onClick={() => inputFileRef.current?.click()}>
+                    <MenuItem command="⇧I" onClick={() => onClick('import')}>
                       Import
                     </MenuItem>
-                    <MenuItem command="⇧E" onClick={() => exportPlayerData()} disabled={settings.playlist.length === 0}>
+                    <MenuItem command="⇧E" onClick={() => onClick('export')} disabled={settings.playlist.length === 0}>
                       Export
                     </MenuItem>
                   </MenuList>
