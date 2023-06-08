@@ -65,8 +65,9 @@ export default function PlayerWithDrawer() {
   const onClose = () => setDrawerIsOpen(false)
 
   const player = useMemo(() => {
-    if (!settings.src) {
-      if (opacityRef.current === 'enabled' || settings.player === 'youtube') {
+    const shouldDisable = settings.player === 'youtube' && !settings.src
+    if (shouldDisable) {
+      if (opacityRef.current === 'enabled') {
         opacityRef.current = 'to-disabled'
       }
     }
