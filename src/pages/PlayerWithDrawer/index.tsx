@@ -29,7 +29,7 @@ import {
   Tooltip,
   useToast,
 } from '@chakra-ui/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import useStateStorage from '../../hooks/useStateStorage'
 import { checkArray, checkObject, TypeCheck } from '../../lib/type-check'
@@ -141,6 +141,7 @@ type PageDrawerProps = {
 
 function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDrawerProps) {
   const toast = useToast()
+  const addButtonRef = useRef<HTMLButtonElement>(null)
   const inputFileRef = useRef<HTMLInputElement>(null)
   const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
   const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
@@ -172,7 +173,6 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
           const newSettings = JSON.parse(content) as unknown
           if (checkObject(newSettings, settingsTypeCheck)) {
             setSettings(newSettings)
-            onClose()
             showSuccess('Player data imported')
           } else {
             showError('Invalid file')
@@ -187,7 +187,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
 
   function exportPlayerData() {
     const fileName = 'player.json'
-    const data = JSON.stringify(state)
+    const data = JSON.stringify(settings)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
 
@@ -243,6 +243,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                   />
                 )}
                 <IconButton
+                  ref={addButtonRef}
                   icon={<AddIcon />}
                   aria-label="Add to playlist"
                   variant="ghost"
@@ -254,7 +255,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
               <Heading as="h4" size="md" mb={2}>
                 Playlist
               </Heading>
-              <VStack as="ol" listStyleType="none">
+              <VStack as="ol" listStyleType="none" overflow="auto" maxH="calc(56px * 10)">
                 {settings.playlist.map((item, index) => {
                   const selected = item.src === settings.src
                   return (
@@ -262,6 +263,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                       <Button
                         size="lg"
                         w="100%"
+                        px={4}
                         borderRadius="none"
                         justifyContent="flex-start"
                         bg={selected ? 'red.500' : undefined}
@@ -270,7 +272,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                       >
                         <Tooltip label={item.title} placement="top">
                           <Text overflow="hidden" textOverflow="ellipsis">
-                            {item.title}
+                            {index + 1}. {item.title}
                           </Text>
                         </Tooltip>
                       </Button>
@@ -330,6 +332,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
         }}
       />
       <AddToPlaylistModal
+        finalFocusRef={addButtonRef}
         isOpen={addToPlaylistIsOpen}
         onClose={(event, item) => {
           switch (event) {
@@ -408,11 +411,6 @@ type Errors<T extends string> = {
   [key in T]?: string | null
 }
 
-type AddToPlaylistModalProps = {
-  isOpen: boolean
-  onClose: (event: 'confirmed' | 'closed', item?: PlaylistItem) => void
-}
-
 const INITIAL_ITEM: PlaylistItem = {
   player: 'youtube',
   src: '',
@@ -423,7 +421,14 @@ const INITIAL_ERRORS: Errors<keyof PlaylistItem> = {
   title: null,
 }
 
-function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
+type AddToPlaylistModalProps = {
+  isOpen: boolean
+  onClose: (event: 'confirmed' | 'closed', item?: PlaylistItem) => void
+  finalFocusRef?: React.RefObject<HTMLElement>
+}
+
+function AddToPlaylistModal({ isOpen, onClose, finalFocusRef }: AddToPlaylistModalProps) {
+  const videoSourceRef = useRef<HTMLInputElement>(null)
   const [item, setItem] = useState(INITIAL_ITEM)
   const [errors, setErrors] = useState(INITIAL_ERRORS)
 
@@ -438,6 +443,12 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
     onClose(event, item)
   }
 
+  useEffect(() => {
+    if (isOpen) {
+      videoSourceRef.current?.focus()
+    }
+  }, [isOpen])
+
   return (
     <Modal
       isCentered
@@ -446,6 +457,7 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
       motionPreset="slideInBottom"
       size="md"
       scrollBehavior="inside"
+      finalFocusRef={finalFocusRef}
     >
       <ModalOverlay />
       <ModalContent>
@@ -454,6 +466,16 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
         </ModalHeader>
         <ModalCloseButton color="white" />
         <ModalBody textAlign="center">
+          <FormControl as="fieldset" isInvalid={!!errors.src} mb={2}>
+            <FormLabel as="legend">Video source</FormLabel>
+            <PlayerInput
+              ref={videoSourceRef}
+              value={item.src}
+              onChange={(e) => updateItem({ src: e.target.value })}
+              placeholder="Video source"
+            />
+            {errors.src && <FormErrorMessage>{errors.src}</FormErrorMessage>}
+          </FormControl>
           <FormControl as="fieldset" isInvalid={!!errors.title} mb={2}>
             <FormLabel as="legend">Title</FormLabel>
             <PlayerInput
@@ -463,15 +485,6 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
             />
             {errors.title && <FormErrorMessage>{errors.title}</FormErrorMessage>}
           </FormControl>
-          <FormControl as="fieldset" isInvalid={!!errors.src} mb={2}>
-            <FormLabel as="legend">Video source</FormLabel>
-            <PlayerInput
-              value={item.src}
-              onChange={(e) => updateItem({ src: e.target.value })}
-              placeholder="Video source"
-            />
-            {errors.src && <FormErrorMessage>{errors.src}</FormErrorMessage>}
-          </FormControl>
           <FormControl as="fieldset">
             <FormLabel as="legend">Player</FormLabel>
             <PlayerSelect value={item.player} onChange={(e) => updateItem({ player: e.target.value as any })} />
@@ -479,7 +492,6 @@ function AddToPlaylistModal({ isOpen, onClose }: AddToPlaylistModalProps) {
         </ModalBody>
         <ModalFooter>
           <Button
-            autoFocus
             colorScheme="blue"
             onClick={() => {
               const newErrors: typeof errors = {}
@@ -534,20 +546,28 @@ type PlayerInputProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   placeholder: string
   isInvalid?: boolean
+  autoFocus?: boolean
 }
 
-function PlayerInput({ value, onChange, placeholder, isInvalid }: PlayerInputProps) {
-  return (
-    <Input
-      isInvalid={isInvalid}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      size="lg"
-      variant="filled"
-    />
-  )
-}
+const PlayerInput = forwardRef(
+  (
+    { value, onChange, placeholder, isInvalid, autoFocus }: PlayerInputProps,
+    ref: React.ForwardedRef<HTMLInputElement>,
+  ) => {
+    return (
+      <Input
+        ref={ref}
+        autoFocus={autoFocus}
+        isInvalid={isInvalid}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        size="lg"
+        variant="filled"
+      />
+    )
+  },
+)
 
 const playlistItemTypeCheck: TypeCheck<PlaylistItem> = {
   player: (it) => typeof it === 'string' && players.includes(it as PlayerKind),
