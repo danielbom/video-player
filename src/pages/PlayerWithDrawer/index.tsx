@@ -32,7 +32,7 @@ import {
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import useStateStorage from '../../hooks/useStateStorage'
-import { checkArray, checkObject, TypeCheck } from '../../lib/type-check'
+import { checkArray, TypeCheck } from '../../lib/type-check'
 
 type PlaylistItem = {
   src: string
@@ -158,7 +158,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
   const showError = (title: string) => toast({ status: 'error', title, isClosable: true })
   const showSuccess = (title: string) => toast({ status: 'success', title, isClosable: true })
 
-  function updateSettingState(partialSettings: Partial<Settings>) {
+  function updateSetting(partialSettings: Partial<Settings>) {
     setSettings((prev) => ({ ...prev, ...partialSettings }))
   }
 
@@ -170,12 +170,12 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
         const fileData = e.target?.result
         const content = typeof fileData === 'string' ? fileData : ''
         try {
-          const newSettings = JSON.parse(content) as unknown
-          if (checkObject(newSettings, settingsTypeCheck)) {
-            setSettings(newSettings)
-            showSuccess('Player data imported')
+          const newPlaylist = JSON.parse(content) as unknown
+          if (checkArray(newPlaylist, playlistItemTypeCheck)) {
+            updateSetting({ playlist: newPlaylist })
+            showSuccess('Playlist imported')
           } else {
-            showError('Invalid file')
+            throw new Error('playlist is not an array of playlist items')
           }
         } catch (e: any) {
           showError('Invalid file: ' + e.message)
@@ -187,7 +187,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
 
   function exportPlayerData() {
     const fileName = 'player.json'
-    const data = JSON.stringify(settings)
+    const data = JSON.stringify(settings.playlist)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
 
@@ -197,7 +197,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
     link.click()
 
     URL.revokeObjectURL(url)
-    showSuccess('Player data exported')
+    showSuccess('Playlist exported')
   }
 
   const hasSelected = settings.playlist.some((item) => item.src === settings.src)
@@ -217,11 +217,11 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
               </Heading>
               <PlayerSelect
                 value={settings.player}
-                onChange={(e) => updateSettingState({ player: e.target.value as any })}
+                onChange={(e) => updateSetting({ player: e.target.value as any })}
               />
               <PlayerInput
                 value={settings.src}
-                onChange={(e) => updateSettingState({ src: e.target.value as any })}
+                onChange={(e) => updateSetting({ src: e.target.value as any })}
                 placeholder="Video source"
               />
             </Box>
@@ -235,7 +235,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                     colorScheme="red"
                     size="sm"
                     onClick={() =>
-                      updateSettingState({
+                      updateSetting({
                         playlist: settings.playlist.filter((it) => it.src !== settings.src),
                         src: state.src,
                       })
@@ -268,7 +268,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
                         justifyContent="flex-start"
                         bg={selected ? 'red.500' : undefined}
                         colorScheme={selected ? 'red' : undefined}
-                        onClick={() => updateSettingState({ src: selected ? state.src : item.src })}
+                        onClick={() => updateSetting({ src: selected ? state.src : item.src })}
                       >
                         <Tooltip label={item.title} placement="top">
                           <Text overflow="hidden" textOverflow="ellipsis">
@@ -322,7 +322,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
           setYoutubeModalIsOpen(false)
           switch (event) {
             case 'confirmed':
-              updateSettingState({ player: 'youtube' })
+              updateSetting({ player: 'youtube' })
               onClose()
               break
             case 'denied':
@@ -337,7 +337,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit }: PageDr
         onClose={(event, item) => {
           switch (event) {
             case 'confirmed':
-              updateSettingState({ playlist: settings.playlist.concat(item!) })
+              updateSetting({ playlist: settings.playlist.concat(item!) })
               break
           }
           setAddToPlaylistIsOpen(false)
