@@ -111,28 +111,28 @@ export default function PlayerWithDrawer() {
   }, [])
 
   const onCommand = useCallback(({ type, payload }: Command) => {
-      switch (type) {
-        case 'play':
-          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+    switch (type) {
+      case 'play':
+        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         if (playerHandleRef.current.isPlaying()) playerHandleRef.current.pause()
-          else playerHandleRef.current.play()
-          setState({ player: payload.player, src: payload.src })
-          break
-        case 'next':
-          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+        else playerHandleRef.current.play()
+        setState({ player: payload.player, src: payload.src })
+        break
+      case 'next':
+        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         playerHandleRef.current.play()
-          setState({ player: payload.player, src: payload.src })
-          break
-        case 'previous':
-          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+        setState({ player: payload.player, src: payload.src })
+        break
+      case 'previous':
+        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         playerHandleRef.current.play()
-          setState({ player: payload.player, src: payload.src })
-          break
-        case 'fullscreen':
-          if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-          playerHandleRef.current.fullscreen()
-          break
-      }
+        setState({ player: payload.player, src: payload.src })
+        break
+      case 'fullscreen':
+        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+        playerHandleRef.current.fullscreen()
+        break
+    }
   }, [])
 
   return (
@@ -215,87 +215,90 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
 
   function importPlayerData(file?: File) {
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const fileData = e.target?.result
-        const content = typeof fileData === 'string' ? fileData : ''
-        try {
-          const newPlaylist = JSON.parse(content) as unknown
-          if (checkArray(newPlaylist, playlistItemTypeCheck)) {
-            updateSetting({ playlist: newPlaylist })
-            showSuccess('Playlist imported')
-          } else {
-            throw new Error('playlist is not an array of playlist items')
-          }
-        } catch (e: any) {
-          showError('Invalid file: ' + e.message)
-        }
-      }
-      reader.readAsText(file)
+      new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target?.result)
+        reader.onerror = (e) => reject(e)
+        reader.readAsText(file)
+      })
+        .then((content) =>
+          typeof content === 'string' //
+            ? content
+            : Promise.reject(new Error('file content was not readed as string')),
+        )
+        .then((content) => JSON.parse(content) as unknown)
+        .then((newPlaylist) =>
+          checkArray(newPlaylist, playlistItemTypeCheck)
+            ? newPlaylist
+            : Promise.reject(new Error('playlist is not an array of playlist items')),
+        )
+        .then((newPlaylist) => updateSetting({ playlist: newPlaylist }))
+        .then(() => alert.success('Playlist imported'))
+        .catch((e: Error) => alert.error('Invalid file: ' + e.message))
     }
   }
 
   const onEvent = useCallback(
     (event: PlayerEvent) => {
       setSettings((settings) => {
-  function exportPlayerData() {
-    const fileName = 'player.json'
-    const data = JSON.stringify(settings.playlist)
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
+        function exportPlayerData() {
+          const fileName = 'player.json'
+          const data = JSON.stringify(settings.playlist)
+          const blob = new Blob([data], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
 
-    const link = document.createElement('a')
-    link.href = url
-    link.download = fileName
-    link.click()
+          const link = document.createElement('a')
+          link.href = url
+          link.download = fileName
+          link.click()
 
-    URL.revokeObjectURL(url)
+          URL.revokeObjectURL(url)
           alert.success('Playlist exported')
-  }
+        }
 
-      switch (event) {
-        case 'play-pause':
-          if (settings.playlist.length > 0) {
-            const item = settings.playlist[settings.current]
-            onCommand({ type: 'play', payload: item })
+        switch (event) {
+          case 'play-pause':
+            if (settings.playlist.length > 0) {
+              const item = settings.playlist[settings.current]
+              onCommand({ type: 'play', payload: item })
               if (settings.src !== item.src || settings.player !== item.player) {
                 console.log('play-pause', item)
                 return { ...settings, src: item.src, player: item.player }
-          } else {
+              } else {
                 return settings
               }
             } else {
               alert.warning('Playlist is empty')
-          }
-          break
-        case 'next':
-          if (settings.current < settings.playlist.length - 1) {
-            const item = settings.playlist[settings.current + 1]
-            onCommand({ type: 'next', payload: item })
+            }
+            break
+          case 'next':
+            if (settings.current < settings.playlist.length - 1) {
+              const item = settings.playlist[settings.current + 1]
+              onCommand({ type: 'next', payload: item })
               return { ...settings, src: item.src, player: item.player, current: settings.current + 1 }
-          } else {
+            } else {
               alert.warning('You are at the end of the playlist')
-          }
-          break
-        case 'previous':
-          if (settings.current > 0) {
-            const item = settings.playlist[settings.current - 1]
-            onCommand({ type: 'previous', payload: item })
+            }
+            break
+          case 'previous':
+            if (settings.current > 0) {
+              const item = settings.playlist[settings.current - 1]
+              onCommand({ type: 'previous', payload: item })
               return { ...settings, src: item.src, player: item.player, current: settings.current - 1 }
-          } else {
+            } else {
               alert.warning('You are at the beginning of the playlist')
-          }
-          break
-        case 'fullscreen':
+            }
+            break
+          case 'fullscreen':
             onCommand({ type: 'fullscreen' })
-          break
-        case 'import':
-          inputFileRef.current?.click()
-          break
-        case 'export':
-          exportPlayerData()
-          break
-      }
+            break
+          case 'import':
+            inputFileRef.current?.click()
+            break
+          case 'export':
+            exportPlayerData()
+            break
+        }
         return settings
       })
     },
