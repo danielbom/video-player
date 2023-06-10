@@ -32,6 +32,7 @@ import {
   Menu,
   MenuList,
   MenuItem,
+  Flex,
 } from '@chakra-ui/react'
 import React, {
   forwardRef,
@@ -397,71 +398,77 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
                 placeholder="Video source"
               />
             </Box>
-            <Box as="section" position="relative">
-              <Box position="absolute" top="0" right="0" mt={-1}>
-                {hasSelected && (
+            <Box as="section">
+              <Flex justifyContent="space-between" mb={2}>
+                <Heading as="h4" size="md">
+                  Playlist
+                </Heading>
+                <Box>
+                  {hasSelected && (
+                    <IconButton
+                      icon={<DeleteIcon />}
+                      aria-label="Delete to playlist"
+                      variant="ghost"
+                      colorScheme="red"
+                      size="sm"
+                      onClick={() =>
+                        updateSetting({
+                          playlist: settings.playlist.filter((it) => it.src !== settings.src),
+                          src: state.src,
+                        })
+                      }
+                    />
+                  )}
                   <IconButton
-                    icon={<DeleteIcon />}
-                    aria-label="Delete to playlist"
+                    ref={addButtonRef}
+                    icon={<AddIcon />}
+                    aria-label="Add to playlist"
                     variant="ghost"
-                    colorScheme="red"
+                    colorScheme="blue"
                     size="sm"
-                    onClick={() =>
-                      updateSetting({
-                        playlist: settings.playlist.filter((it) => it.src !== settings.src),
-                        src: state.src,
-                      })
-                    }
+                    onClick={() => setAddToPlaylistIsOpen(true)}
                   />
-                )}
-                <IconButton
-                  ref={addButtonRef}
-                  icon={<AddIcon />}
-                  aria-label="Add to playlist"
-                  variant="ghost"
-                  colorScheme="blue"
-                  size="sm"
-                  onClick={() => setAddToPlaylistIsOpen(true)}
-                />
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    icon={<HamburgerIcon />}
-                    aria-label="Playlist options"
-                    size="sm"
-                    colorScheme="gray"
-                    variant="outline"
-                  />
-                  <MenuList>
-                    <MenuItem
-                      command="⇧K"
-                      onClick={() => onEvent('play-pause')}
-                      disabled={settings.playlist.length === 0}
-                    >
-                      Play / Pause
-                    </MenuItem>
-                    <MenuItem
-                      command="⇧L"
-                      onClick={() => onEvent('next')}
-                      disabled={!(settings.current < settings.playlist.length - 1)}
-                    >
-                      Next
-                    </MenuItem>
-                    <MenuItem command="⇧J" onClick={() => onEvent('previous')} disabled={!(settings.current > 0)}>
-                      Previous
-                    </MenuItem>
-                    <MenuItem command="⇧I" onClick={() => onEvent('import')}>
-                      Import
-                    </MenuItem>
-                    <MenuItem command="⇧E" onClick={() => onEvent('export')} disabled={settings.playlist.length === 0}>
-                      Export
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </Box>
-              <Heading as="h4" size="md" mb={2}>
-                Playlist
-              </Heading>
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      icon={<HamburgerIcon />}
+                      aria-label="Playlist options"
+                      size="sm"
+                      colorScheme="gray"
+                      variant="outline"
+                    />
+                    <MenuList>
+                      <MenuItem
+                        command="⇧K"
+                        onClick={() => onEvent('play-pause')}
+                        disabled={settings.playlist.length === 0}
+                      >
+                        Play / Pause
+                      </MenuItem>
+                      <MenuItem
+                        command="⇧L"
+                        onClick={() => onEvent('next')}
+                        disabled={!(settings.current < settings.playlist.length - 1)}
+                      >
+                        Next
+                      </MenuItem>
+                      <MenuItem command="⇧J" onClick={() => onEvent('previous')} disabled={!(settings.current > 0)}>
+                        Previous
+                      </MenuItem>
+                      <MenuItem command="⇧I" onClick={() => onEvent('import')}>
+                        Import
+                      </MenuItem>
+                      <MenuItem
+                        command="⇧E"
+                        onClick={() => onEvent('export')}
+                        disabled={settings.playlist.length === 0}
+                      >
+                        Export
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                </Box>
+              </Flex>
               <VStack as="ol" listStyleType="none" overflow="auto" maxH="calc(56px * 10)">
                 {settings.playlist.map((item, index) => {
                   const selected = item.src === settings.src
@@ -524,9 +531,11 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
           switch (event) {
             case 'confirmed':
               updateSetting({ player: 'youtube' })
+              onSave({ player: 'youtube', src: settings.src })
               onClose()
               break
             case 'denied':
+              onSave(settings)
               onClose()
               break
           }
