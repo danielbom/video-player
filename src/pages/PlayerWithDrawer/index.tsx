@@ -89,18 +89,16 @@ export default function PlayerWithDrawer() {
         opacityRef.current = 'to-disabled'
       }
     }
-    return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
-  }, [state.player, state.src])
 
-  useEffect(() => {
-    if (!playerHandleRef.current) return
-    playerHandleRef.current.onEnd(() => {
+    playerHandleRef.current?.onEnd(() => {
       if (!onEventRef.current) return
       if (runningRef.current) {
         onEventRef.current('next')
       }
     })
-  }, [playerHandleRef.current])
+
+    return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
+  }, [state.player, state.src])
 
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
