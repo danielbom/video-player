@@ -3,4 +3,5 @@ export type PlayerHandle = {
   pause: () => void
   fullscreen: () => void
   isPlaying: () => boolean
+  onEnd: (callback: () => void) => void
 }

@@ -33,7 +33,16 @@ import {
   MenuList,
   MenuItem,
 } from '@chakra-ui/react'
-import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  forwardRef,
+  RefObject,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
@@ -61,6 +70,8 @@ export default function PlayerWithDrawer() {
   const btnRef = useRef<HTMLDivElement>(null)
   const playerHandleRef = useRef<PlayerHandle>(null)
   const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
+  const runningRef = useRef(false)
+  const onEventRef = useRef<(event: PlayerEvent) => void>(null)
   const [drawerIsOpen, setDrawerIsOpen] = useState(false)
   const [state, setState] = useState<PlayerState>({ player: 'media-chrome', src: undefined })
 
@@ -80,6 +91,16 @@ export default function PlayerWithDrawer() {
     }
     return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
   }, [state.player, state.src])
+
+  useEffect(() => {
+    if (!playerHandleRef.current) return
+    playerHandleRef.current.onEnd(() => {
+      if (!onEventRef.current) return
+      if (runningRef.current) {
+        onEventRef.current('next')
+      }
+    })
+  }, [playerHandleRef.current])
 
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
@@ -114,18 +135,29 @@ export default function PlayerWithDrawer() {
     switch (type) {
       case 'play':
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        if (playerHandleRef.current.isPlaying()) playerHandleRef.current.pause()
-        else playerHandleRef.current.play()
+        if (playerHandleRef.current.isPlaying()) {
+          playerHandleRef.current.pause()
+          runningRef.current = false
+        } else {
+          playerHandleRef.current.play()
+          runningRef.current = true
+        }
         setState({ player: payload.player, src: payload.src })
         break
       case 'next':
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        playerHandleRef.current.play()
+        if (!playerHandleRef.current.isPlaying()) {
+          playerHandleRef.current.play()
+          runningRef.current = true
+        }
         setState({ player: payload.player, src: payload.src })
         break
       case 'previous':
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        playerHandleRef.current.play()
+        if (!playerHandleRef.current.isPlaying()) {
+          playerHandleRef.current.play()
+          runningRef.current = true
+        }
         setState({ player: payload.player, src: payload.src })
         break
       case 'fullscreen':
@@ -159,6 +191,7 @@ export default function PlayerWithDrawer() {
         onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
         onSettingsInit={onSettingsInit}
         onCommand={onCommand}
+        onEventRef={onEventRef}
       />
     </Box>
   )
@@ -181,9 +214,10 @@ type PageDrawerProps = {
   onSave: (state: PlayerState) => void
   onSettingsInit: (settings?: Settings) => void
   onCommand: (command: Command) => void
+  onEventRef?: RefObject<(event: PlayerEvent) => void>
 }
 
-function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onCommand }: PageDrawerProps) {
+function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onCommand, onEventRef }: PageDrawerProps) {
   const toast = useToast()
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const inputFileRef = useRef<HTMLInputElement>(null)
@@ -304,6 +338,8 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
     },
     [alert, onCommand, setSettings],
   )
+
+  useImperativeHandle(onEventRef, () => onEvent)
 
   useEffect(() => {
     let lock = false
