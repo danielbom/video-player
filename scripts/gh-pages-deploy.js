@@ -5,16 +5,16 @@ import fs from 'fs'
 // https://vitejs.dev/guide/static-deploy.html
 ;(async () => {
   try {
-    await execa('git', ['checkout', '--orphan', 'gh-pages'])
+    // await execa('git', ['checkout', '--orphan', 'gh-pages'])
     console.log('Building...')
-    await execa('npm', ['run', 'build'])
+    await execa('npm', ['run', 'build'], { stdout: 'inherit' })
     const folderName = 'dist'
     if (!fs.existsSync(folderName)) throw new Error(`No '${folderName}' folder found!`)
     await execa('git', ['--work-tree', folderName, 'add', '--all'])
     await execa('git', ['--work-tree', folderName, 'commit', '-m', 'gh-pages'])
     console.log('Pushing to gh-pages...')
     await execa('git', ['push', 'origin', 'HEAD:gh-pages', '--force'])
-    await execa('rmdir', [folderName])
+    fs.rmSync(folderName, { recursive: true })
     await execa('git', ['checkout', '-f', 'main'])
     await execa('git', ['branch', '-D', 'gh-pages'])
     console.log('Successfully deployed')
