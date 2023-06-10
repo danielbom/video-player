@@ -6,8 +6,8 @@ import useFullpage from '../../hooks/useFullpage'
 
 // https://videojs.com/guides/react/
 
-type VideoJs = typeof videojs
-type Player = ReturnType<VideoJs>
+type VideoJsFn = typeof videojs
+type Player = ReturnType<VideoJsFn>
 
 type VideoSource = {
   src: string
@@ -21,7 +21,7 @@ type VideoJsProps = {
   fluid: boolean
   fullPage: boolean
   sources: VideoSource[]
-  onReady?: (player: Player, videojs: VideoJs) => void
+  onReady?: (player: Player, videojs: VideoJsFn) => void
 }
 
 export const VideoJs = ({ onReady, fullPage, ...options }: VideoJsProps) => {
@@ -54,7 +54,7 @@ export const VideoJs = ({ onReady, fullPage, ...options }: VideoJsProps) => {
         playerRef.current = undefined
       }
     }
-  }, [videoRef, options])
+  }, [videoRef, options, onReady])
 
   useFullpage(videoRef, fullPage)
 

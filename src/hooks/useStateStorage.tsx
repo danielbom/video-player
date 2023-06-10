@@ -17,18 +17,21 @@ export default function useStateStorage<T>(
     return result
   })
 
-  const setValue: React.Dispatch<React.SetStateAction<T>> = useCallback((valueOrFn) => {
-    if (typeof valueOrFn === 'function') {
-      _setValue((prev) => {
-        const newValue = (valueOrFn as any)(prev)
-        storage.setItem(key, JSON.stringify(newValue))
-        return newValue
-      })
-    } else {
-      _setValue(valueOrFn)
-      storage.setItem(key, JSON.stringify(valueOrFn))
-    }
-  }, [])
+  const setValue: React.Dispatch<React.SetStateAction<T>> = useCallback(
+    (valueOrFn) => {
+      if (typeof valueOrFn === 'function') {
+        _setValue((prev) => {
+          const newValue = (valueOrFn as any)(prev)
+          storage.setItem(key, JSON.stringify(newValue))
+          return newValue
+        })
+      } else {
+        _setValue(valueOrFn)
+        storage.setItem(key, JSON.stringify(valueOrFn))
+      }
+    },
+    [key, storage],
+  )
 
   return [value, setValue] as const
 }

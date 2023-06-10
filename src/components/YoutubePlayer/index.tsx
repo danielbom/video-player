@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState } from 'react'
+import { useImperativeHandle, useRef } from 'react'
 import YouTube from 'react-youtube'
 import { PlayerHandle } from '../VideoPlayer/types'
 import './index.css'

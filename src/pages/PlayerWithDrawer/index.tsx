@@ -739,9 +739,9 @@ const playlistItemTypeCheck: TypeCheck<PlaylistItem> = {
   title: (it) => typeof it === 'string',
 }
 
-const settingsTypeCheck: TypeCheck<Settings> = {
-  player: (it) => typeof it === 'string' && players.includes(it as PlayerKind),
-  src: (it) => typeof it === 'string' || typeof it === 'undefined',
-  current: (it) => typeof it === 'number',
-  playlist: (it) => checkArray(it, playlistItemTypeCheck),
-}
+//const settingsTypeCheck: TypeCheck<Settings> = {
+//  player: (it) => typeof it === 'string' && players.includes(it as PlayerKind),
+//  src: (it) => typeof it === 'string' || typeof it === 'undefined',
+//  current: (it) => typeof it === 'number',
+//  playlist: (it) => checkArray(it, playlistItemTypeCheck),
+//}
