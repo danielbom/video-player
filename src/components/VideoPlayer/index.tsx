@@ -1,6 +1,4 @@
-import { MediaChromePlayer } from '../../components/MediaChromePlayer'
-import { VideoJsPlayer } from '../../components/VideoJsPlayer'
-import { YoutubePlayer } from '../YoutubePlayer'
+import { useEffect, useState } from 'react'
 import { PlayerHandle } from './types'
 
 export type PlayerKind = 'media-chrome' | 'video-js' | 'youtube'
@@ -12,16 +10,36 @@ export type VideoPlayerProps = {
 }
 
 export function VideoPlayer({ player, src, fullPage, playerHandleRef }: VideoPlayerProps) {
-  if (!src) return null
+  const [VideoPlayerComponent, setVideoPlayerComponent] = useState<React.ReactNode>(null)
 
-  switch (player) {
-    case 'media-chrome':
-      return <MediaChromePlayer src={src} fullPage={fullPage} />
-    case 'video-js':
-      return <VideoJsPlayer src={src} fullPage={fullPage} />
-    case 'youtube':
-      return <YoutubePlayer src={src} fullPage={fullPage} playerHandleRef={playerHandleRef} />
-    default:
-      return null
-  }
+  useEffect(() => {
+    async function lazyLoadPlayer() {
+      if (!src) {
+        setVideoPlayerComponent(null)
+        return
+      }
+
+      switch (player) {
+        case 'media-chrome':
+          const { MediaChromePlayer } = await import('../../components/MediaChromePlayer')
+          setVideoPlayerComponent(<MediaChromePlayer src={src} fullPage={fullPage} />)
+          break
+        case 'video-js':
+          const { VideoJsPlayer } = await import('../../components/VideoJsPlayer')
+          setVideoPlayerComponent(<VideoJsPlayer src={src} fullPage={fullPage} />)
+          break
+        case 'youtube':
+          const { YoutubePlayer } = await import('../YoutubePlayer')
+          setVideoPlayerComponent(<YoutubePlayer src={src} fullPage={fullPage} playerHandleRef={playerHandleRef} />)
+          break
+        default:
+          break
+      }
+    }
+
+    lazyLoadPlayer()
+  }, [player, src, fullPage, playerHandleRef])
+
+  console.log('VideoPlayerComponent', player, src, VideoPlayerComponent)
+  return <>{VideoPlayerComponent}</>
 }
