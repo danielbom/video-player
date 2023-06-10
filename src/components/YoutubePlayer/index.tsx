@@ -10,17 +10,15 @@ type YoutubePlayerProps = {
 }
 
 export function YoutubePlayer({ src, fullPage, playerHandleRef: playerRef }: YoutubePlayerProps) {
-  const [autoplay, setAutoplay] = useState(false)
+  const stateRef = useRef({ playing: false })
   const youtubeRef = useRef<YouTube>(null)
 
   useImperativeHandle(playerRef, () => ({
     play: () => {
       youtubeRef.current?.getInternalPlayer()?.playVideo()
-      setAutoplay(true)
     },
     pause: () => {
       youtubeRef.current?.getInternalPlayer()?.pauseVideo()
-      setAutoplay(false)
     },
     fullscreen: () => {
       youtubeRef.current
@@ -30,16 +28,20 @@ export function YoutubePlayer({ src, fullPage, playerHandleRef: playerRef }: You
           ;(iframe.querySelector('.ytp-fullscreen-button.ytp-button') as HTMLButtonElement)?.click()
         })
     },
+    isPlaying: () => stateRef.current.playing,
   }))
 
   return (
     <YouTube
-      opts={{ playerVars: { autoplay: autoplay ? 1 : 0 } }}
       ref={youtubeRef}
       videoId={src && extractVideoIdFromUrl(src)}
       iframeClassName={fullPage ? 'fullpage' : ''}
-      onPause={() => setAutoplay(false)}
-      onPlay={() => setAutoplay(true)}
+      onPause={() => {
+        stateRef.current.playing = false
+      }}
+      onPlay={() => {
+        stateRef.current.playing = true
+      }}
     />
   )
 }
