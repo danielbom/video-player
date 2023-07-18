@@ -34,16 +34,7 @@ import {
   MenuItem,
   Flex,
 } from '@chakra-ui/react'
-import React, {
-  forwardRef,
-  RefObject,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
@@ -67,33 +58,44 @@ type Settings = {
   playlist: PlaylistItem[]
 }
 
+const DEFAULT_PLAYER_STATE: PlayerState = {
+  player: 'media-chrome',
+  src: undefined,
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  player: 'media-chrome',
+  src: undefined,
+  current: 0,
+  playlist: [],
+}
+
 export default function PlayerWithDrawer() {
+  const toast = useToast()
+  const inputFileRef = useRef<HTMLInputElement>(null)
   const btnRef = useRef<HTMLDivElement>(null)
   const playerHandleRef = useRef<PlayerHandle>(null)
-  const onEventRef = useRef<(event: PlayerEvent) => void>(null)
   const [drawerIsOpen, setDrawerIsOpen] = useState(false)
-  const [state, setState] = useState<PlayerState>({
-    player: 'media-chrome',
-    src: undefined,
+  const [state, setState] = useState<PlayerState>(DEFAULT_PLAYER_STATE)
+  const [settings, setSettings] = useStateStorage<Settings>('settings', DEFAULT_SETTINGS, {
+    onInit: (settings?: Settings) => {
+      if (!settings) return
+      setState({ player: settings.player, src: settings.src })
+    },
   })
 
-  const onSettingsInit = (settings?: Settings) => {
-    if (!settings) return
-    setState({ player: settings.player, src: settings.src })
+  function updateSetting(partialSettings: Partial<Settings>) {
+    setSettings((prev) => ({ ...prev, ...partialSettings }))
   }
 
-  const onClose = () => setDrawerIsOpen(false)
-
-  const player = useMemo(() => {
-    playerHandleRef.current?.onEnd(() => {
-      if (!onEventRef.current) return
-      if (playerHandleRef.current?.isPlaying()) {
-        onEventRef.current('next')
-      }
-    })
-
-    return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
-  }, [state.player, state.src])
+  const alert = useMemo(
+    () => ({
+      error: (title: string) => toast({ status: 'error', title, isClosable: true }),
+      warning: (title: string) => toast({ status: 'warning', title, isClosable: true }),
+      success: (title: string) => toast({ status: 'success', title, isClosable: true }),
+    }),
+    [toast],
+  )
 
   useShowOnClose({ ref: btnRef, disabled: state.player === 'youtube' && !state.src })
 
@@ -128,86 +130,6 @@ export default function PlayerWithDrawer() {
         break
     }
   }, [])
-
-  return (
-    <Box>
-      <Box bg="gray.100" w="100vw" h="100vh">
-        {player}
-      </Box>
-
-      <Box ref={btnRef} transition="opacity 0.5s" position="fixed" top="4" right="4">
-        <IconButton
-          icon={<SettingsIcon />}
-          aria-label="Menu"
-          variant="ghost"
-          colorScheme="blue"
-          size="lg"
-          onClick={() => setDrawerIsOpen(true)}
-        />
-      </Box>
-
-      <PlayerDrawer
-        isOpen={drawerIsOpen}
-        onClose={onClose}
-        state={state}
-        onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
-        onSettingsInit={onSettingsInit}
-        onCommand={onCommand}
-        onEventRef={onEventRef}
-      />
-    </Box>
-  )
-}
-
-type Action<T, P = undefined> = P extends undefined ? { type: T; payload?: undefined } : { type: T; payload: P }
-
-type Command =
-  | Action<'play', PlaylistItem>
-  | Action<'next', PlaylistItem>
-  | Action<'previous', PlaylistItem>
-  | Action<'fullscreen'>
-
-type PlayerEvent = 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export'
-
-type PageDrawerProps = {
-  state: PlayerState
-  isOpen: boolean
-  onClose: () => void
-  onSave: (state: PlayerState) => void
-  onSettingsInit: (settings?: Settings) => void
-  onCommand: (command: Command) => void
-  onEventRef?: RefObject<(event: PlayerEvent) => void>
-}
-
-function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onCommand, onEventRef }: PageDrawerProps) {
-  const toast = useToast()
-  const addButtonRef = useRef<HTMLButtonElement>(null)
-  const inputFileRef = useRef<HTMLInputElement>(null)
-  const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
-  const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
-  const [settings, setSettings] = useStateStorage<Settings>(
-    'settings',
-    {
-      player: 'media-chrome',
-      src: undefined,
-      current: 0,
-      playlist: [],
-    },
-    { onInit: onSettingsInit },
-  )
-
-  const alert = useMemo(
-    () => ({
-      error: (title: string) => toast({ status: 'error', title, isClosable: true }),
-      warning: (title: string) => toast({ status: 'warning', title, isClosable: true }),
-      success: (title: string) => toast({ status: 'success', title, isClosable: true }),
-    }),
-    [toast],
-  )
-
-  function updateSetting(partialSettings: Partial<Settings>) {
-    setSettings((prev) => ({ ...prev, ...partialSettings }))
-  }
 
   function importPlayerData(file?: File) {
     if (file) {
@@ -310,7 +232,83 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
     [alert, onCommand, setSettings],
   )
 
-  useImperativeHandle(onEventRef, () => onEvent)
+  useEffect(() => {
+    if (state.player === 'youtube' && state.src) {
+      playerHandleRef.current?.onEnd(() => {
+        if (playerHandleRef.current?.isPlaying()) {
+          onEvent('next')
+        }
+      })
+    }
+  }, [onEvent, state])
+
+  const onClose = () => setDrawerIsOpen(false)
+
+  return (
+    <Box>
+      <Box bg="gray.100" w="100vw" h="100vh">
+        <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
+      </Box>
+
+      <Box ref={btnRef} transition="opacity 0.5s" position="fixed" top="4" right="4">
+        <IconButton
+          icon={<SettingsIcon />}
+          aria-label="Menu"
+          variant="ghost"
+          colorScheme="blue"
+          size="lg"
+          onClick={() => setDrawerIsOpen(true)}
+        />
+      </Box>
+
+      <PlayerDrawer
+        settings={settings}
+        updateSettings={updateSetting}
+        isOpen={drawerIsOpen}
+        onClose={onClose}
+        state={state}
+        onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
+        onCommand={onCommand}
+        onEvent={onEvent}
+      />
+
+      <input
+        ref={inputFileRef}
+        type="file"
+        accept="application/json"
+        style={{ display: 'none' }}
+        onChange={(e) => importPlayerData(e.target.files?.[0])}
+      />
+    </Box>
+  )
+}
+
+type Action<T, P = undefined> = P extends undefined ? { type: T; payload?: undefined } : { type: T; payload: P }
+
+type Command =
+  | Action<'play', PlaylistItem>
+  | Action<'next', PlaylistItem>
+  | Action<'previous', PlaylistItem>
+  | Action<'fullscreen'>
+
+type PlayerEvent = 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export'
+
+type PageDrawerProps = {
+  settings: Settings
+  updateSettings: (settings: Partial<Settings>) => void
+  state: PlayerState
+  isOpen: boolean
+  onClose: () => void
+  onSave: (state: PlayerState) => void
+  onCommand: (command: Command) => void
+  onEvent: (event: PlayerEvent) => void
+}
+
+function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings, onEvent }: PageDrawerProps) {
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
+  const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
+  const hasSelected = settings.playlist.some((item) => item.src === settings.src)
 
   useEffect(() => {
     let lock = false
@@ -345,8 +343,6 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onEvent])
 
-  const hasSelected = settings.playlist.some((item) => item.src === settings.src)
-
   return (
     <>
       <Drawer isOpen={isOpen} placement="right" size="md" onClose={onClose}>
@@ -362,11 +358,11 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
               </Heading>
               <PlayerSelect
                 value={settings.player}
-                onChange={(e) => updateSetting({ player: e.target.value as any })}
+                onChange={(e) => updateSettings({ player: e.target.value as any })}
               />
               <PlayerInput
                 value={settings.src}
-                onChange={(e) => updateSetting({ src: e.target.value as any })}
+                onChange={(e) => updateSettings({ src: e.target.value as any })}
                 placeholder="Video source"
               />
             </Box>
@@ -384,7 +380,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
                       colorScheme="red"
                       size="sm"
                       onClick={() =>
-                        updateSetting({
+                        updateSettings({
                           playlist: settings.playlist.filter((it) => it.src !== settings.src),
                           src: state.src,
                         })
@@ -455,7 +451,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
                         bg={selected ? 'red.500' : undefined}
                         colorScheme={selected ? 'red' : undefined}
                         onClick={() =>
-                          updateSetting(selected ? { src: state.src, current: 0 } : { src: item.src, current: index })
+                          updateSettings(selected ? { src: state.src, current: 0 } : { src: item.src, current: index })
                         }
                       >
                         <Tooltip label={item.title} placement="top">
@@ -502,7 +498,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
           setYoutubeModalIsOpen(false)
           switch (event) {
             case 'confirmed':
-              updateSetting({ player: 'youtube' })
+              updateSettings({ player: 'youtube' })
               onSave({ player: 'youtube', src: settings.src })
               onClose()
               break
@@ -519,18 +515,11 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
         onClose={(event, item) => {
           switch (event) {
             case 'confirmed':
-              updateSetting({ playlist: settings.playlist.concat(item!) })
+              updateSettings({ playlist: settings.playlist.concat(item!) })
               break
           }
           setAddToPlaylistIsOpen(false)
         }}
-      />
-      <input
-        ref={inputFileRef}
-        type="file"
-        accept="application/json"
-        style={{ display: 'none' }}
-        onChange={(e) => importPlayerData(e.target.files?.[0])}
       />
     </>
   )

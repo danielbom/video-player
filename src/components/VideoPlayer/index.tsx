@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { PlayerHandle } from './types'
 
 export type PlayerKind = 'media-chrome' | 'video-js' | 'youtube'
@@ -9,7 +9,7 @@ export type VideoPlayerProps = {
   playerHandleRef?: React.Ref<PlayerHandle>
 }
 
-export function VideoPlayer({ player, src, fullPage, playerHandleRef }: VideoPlayerProps) {
+export const VideoPlayer = memo(({ player, src, fullPage, playerHandleRef }: VideoPlayerProps) => {
   const [VideoPlayerComponent, setVideoPlayerComponent] = useState<React.ReactNode>(null)
 
   useEffect(() => {
@@ -41,4 +41,4 @@ export function VideoPlayer({ player, src, fullPage, playerHandleRef }: VideoPla
   }, [player, src, fullPage, playerHandleRef])
 
   return <>{VideoPlayerComponent}</>
-}
+})
