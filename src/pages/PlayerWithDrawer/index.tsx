@@ -33,6 +33,12 @@ import {
   MenuList,
   MenuItem,
   Flex,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   useDisclosure,
 } from '@chakra-ui/react'
 import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -58,6 +64,16 @@ type Settings = {
   current: number
   playlist: PlaylistItem[]
 }
+
+type PlayerEvent = 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export'
+
+type Action<T, P = undefined> = P extends undefined ? { type: T; payload?: undefined } : { type: T; payload: P }
+
+type Command =
+  | Action<'play', PlaylistItem>
+  | Action<'next', PlaylistItem>
+  | Action<'previous', PlaylistItem>
+  | Action<'fullscreen'>
 
 const DEFAULT_PLAYER_STATE: PlayerState = {
   player: 'media-chrome',
@@ -100,38 +116,6 @@ export default function PlayerWithDrawer() {
 
   useShowOnClose({ ref: btnRef, disabled: state.player === 'youtube' && !state.src })
 
-  const onCommand = useCallback(({ type, payload }: Command) => {
-    switch (type) {
-      case 'play':
-        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        if (playerHandleRef.current.isPlaying()) {
-          playerHandleRef.current.pause()
-        } else {
-          playerHandleRef.current.play()
-        }
-        setState({ player: payload.player, src: payload.src })
-        break
-      case 'next':
-        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        if (!playerHandleRef.current.isPlaying()) {
-          playerHandleRef.current.play()
-        }
-        setState({ player: payload.player, src: payload.src })
-        break
-      case 'previous':
-        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        if (!playerHandleRef.current.isPlaying()) {
-          playerHandleRef.current.play()
-        }
-        setState({ player: payload.player, src: payload.src })
-        break
-      case 'fullscreen':
-        if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
-        playerHandleRef.current.fullscreen()
-        break
-    }
-  }, [])
-
   function importPlayerData(file?: File) {
     if (file) {
       new Promise((resolve, reject) => {
@@ -160,6 +144,38 @@ export default function PlayerWithDrawer() {
   const onEvent = useCallback(
     (event: PlayerEvent) => {
       setSettings((settings) => {
+        const onCommand = ({ type, payload }: Command) => {
+          switch (type) {
+            case 'play':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (playerHandleRef.current.isPlaying()) {
+                playerHandleRef.current.pause()
+              } else {
+                playerHandleRef.current.play()
+              }
+              setState({ player: payload.player, src: payload.src })
+              break
+            case 'next':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (!playerHandleRef.current.isPlaying()) {
+                playerHandleRef.current.play()
+              }
+              setState({ player: payload.player, src: payload.src })
+              break
+            case 'previous':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              if (!playerHandleRef.current.isPlaying()) {
+                playerHandleRef.current.play()
+              }
+              setState({ player: payload.player, src: payload.src })
+              break
+            case 'fullscreen':
+              if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
+              playerHandleRef.current.fullscreen()
+              break
+          }
+        }
+
         function exportPlayerData() {
           const fileName = 'player.json'
           const data = JSON.stringify(settings.playlist)
@@ -230,7 +246,7 @@ export default function PlayerWithDrawer() {
         return settings
       })
     },
-    [alert, onCommand, setSettings],
+    [alert, setSettings],
   )
 
   useEffect(() => {
@@ -267,7 +283,6 @@ export default function PlayerWithDrawer() {
         onClose={() => drawer.onClose()}
         state={state}
         onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
-        onCommand={onCommand}
         onEvent={onEvent}
       />
 
@@ -282,16 +297,6 @@ export default function PlayerWithDrawer() {
   )
 }
 
-type Action<T, P = undefined> = P extends undefined ? { type: T; payload?: undefined } : { type: T; payload: P }
-
-type Command =
-  | Action<'play', PlaylistItem>
-  | Action<'next', PlaylistItem>
-  | Action<'previous', PlaylistItem>
-  | Action<'fullscreen'>
-
-type PlayerEvent = 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export'
-
 type Shortcut = {
   key: string
   event: PlayerEvent
@@ -305,19 +310,19 @@ const KEYBOARD_SHORTCUTS: Shortcut[] = [
   { key: 'F', event: 'fullscreen' },
 ]
 
-type PageDrawerProps = {
+type PlayerDrawerProps = {
   settings: Settings
   updateSettings: (settings: Partial<Settings>) => void
   state: PlayerState
   isOpen: boolean
   onClose: () => void
   onSave: (state: PlayerState) => void
-  onCommand: (command: Command) => void
   onEvent: (event: PlayerEvent) => void
 }
 
-function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings, onEvent }: PageDrawerProps) {
+function PlayerDrawer({ state, updateSettings, onSave, isOpen, onClose, settings, onEvent }: PlayerDrawerProps) {
   const addButtonRef = useRef<HTMLButtonElement>(null)
+  const deleteAll = useDisclosure()
   const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
   const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
 
@@ -365,21 +370,23 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings
                   Playlist
                 </Heading>
                 <Box>
-                  {hasSelected && (
-                    <IconButton
-                      icon={<DeleteIcon />}
-                      aria-label="Delete to playlist"
-                      variant="ghost"
-                      colorScheme="red"
-                      size="sm"
-                      onClick={() =>
+                  <IconButton
+                    icon={<DeleteIcon />}
+                    aria-label="Delete to playlist"
+                    variant="ghost"
+                    colorScheme="red"
+                    size="sm"
+                    onClick={() => {
+                      if (!settings.src) {
+                        deleteAll.onOpen()
+                      } else {
                         updateSettings({
                           playlist: settings.playlist.filter((it) => it.src !== settings.src),
                           src: state.src,
                         })
                       }
-                    />
-                  )}
+                    }}
+                  />
                   <IconButton
                     ref={addButtonRef}
                     icon={<AddIcon />}
@@ -444,7 +451,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings
                         bg={selected ? 'red.500' : undefined}
                         colorScheme={selected ? 'red' : undefined}
                         onClick={() =>
-                          updateSettings(selected ? { src: state.src, current: 0 } : { src: item.src, current: index })
+                          updateSettings(selected ? { src: undefined, current: -1 } : { src: item.src, current: index })
                         }
                       >
                         <Tooltip label={item.title} placement="top">
@@ -471,7 +478,7 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings
                 if (shouldOpenYoutubeModal) {
                   setYoutubeModalIsOpen(true)
                 } else {
-                  onSave(settings)
+                  onSave({ player: settings.player, src: settings.src })
                   onClose()
                 }
               }}
@@ -514,7 +521,50 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings
           setAddToPlaylistIsOpen(false)
         }}
       />
+      <AlertDeleteAll
+        isOpen={deleteAll.isOpen}
+        onClose={(event) => {
+          switch (event) {
+            case 'confirmed':
+              updateSettings({ playlist: [] })
+              break
+          }
+          deleteAll.onClose()
+        }}
+      />
     </>
+  )
+}
+
+type AlertDeleteAllProps = {
+  isOpen: boolean
+  onClose: (event: 'confirmed' | 'denied' | 'closed') => void
+}
+
+function AlertDeleteAll({ isOpen, onClose }: AlertDeleteAllProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  return (
+    <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={() => onClose('closed')}>
+      <AlertDialogOverlay>
+        <AlertDialogContent>
+          <AlertDialogHeader fontSize="lg" fontWeight="bold">
+            Delete All Items
+          </AlertDialogHeader>
+
+          <AlertDialogBody>Are you sure you want to delete all items? This action cannot be undone.</AlertDialogBody>
+
+          <AlertDialogFooter>
+            <Button ref={cancelRef} onClick={() => onClose('denied')}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={() => onClose('confirmed')} ml={3}>
+              Delete All
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogOverlay>
+    </AlertDialog>
   )
 }
 
