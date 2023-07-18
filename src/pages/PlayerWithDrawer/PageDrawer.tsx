@@ -21,26 +21,15 @@ import {
   Box,
   Text,
 } from '@chakra-ui/react'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { ModalAddToPlaylist } from './ModalAddToPlaylist'
 import { AlertDeleteAll } from './AlertDeleteAll'
 import { PageInput } from './PageInput'
 import { PageSelect } from './PageSelect'
 import { Settings, PlayerState, PlayerEvent } from './types'
 import { ModalYoutubeUrlDetected } from './ModalYoutubeUrlDetected'
-
-type Shortcut = {
-  key: string
-  event: PlayerEvent
-}
-const KEYBOARD_SHORTCUTS: Shortcut[] = [
-  { key: 'K', event: 'play-pause' },
-  { key: 'L', event: 'next' },
-  { key: 'J', event: 'previous' },
-  { key: 'I', event: 'import' },
-  { key: 'E', event: 'export' },
-  { key: 'F', event: 'fullscreen' },
-]
+import { useShortcuts } from './useShortcuts'
+import { KEYBOARD_SHORTCUTS } from './shortcuts'
 
 export type PageDrawerProps = {
   settings: Settings
@@ -57,21 +46,7 @@ export function PageDrawer({ state, updateSettings, onSave, isOpen, onClose, set
   const deleteAll = useDisclosure()
   const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
   const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
-
-  useEffect(() => {
-    let lock = false
-    function onKeyDown(e: KeyboardEvent) {
-      if (lock) return
-      if (document.activeElement && document.activeElement.tagName === 'INPUT') return
-      if (e.ctrlKey || e.altKey || e.metaKey) return
-      lock = true
-      setTimeout(() => (lock = false), 100)
-      const shortcut = KEYBOARD_SHORTCUTS.find((it) => it.key === e.key)
-      if (shortcut) onEvent(shortcut.event)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onEvent])
+  useShortcuts(KEYBOARD_SHORTCUTS, onEvent)
 
   return (
     <>
