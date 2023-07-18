@@ -70,8 +70,6 @@ type Settings = {
 export default function PlayerWithDrawer() {
   const btnRef = useRef<HTMLDivElement>(null)
   const playerHandleRef = useRef<PlayerHandle>(null)
-  const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
-  const runningRef = useRef(false)
   const onEventRef = useRef<(event: PlayerEvent) => void>(null)
   const [drawerIsOpen, setDrawerIsOpen] = useState(false)
   const [state, setState] = useState<PlayerState>({
@@ -87,16 +85,9 @@ export default function PlayerWithDrawer() {
   const onClose = () => setDrawerIsOpen(false)
 
   const player = useMemo(() => {
-    const shouldDisable = state.player === 'youtube' && !state.src
-    if (shouldDisable) {
-      if (opacityRef.current === 'enabled') {
-        opacityRef.current = 'to-disabled'
-      }
-    }
-
     playerHandleRef.current?.onEnd(() => {
       if (!onEventRef.current) return
-      if (runningRef.current) {
+      if (playerHandleRef.current?.isPlaying()) {
         onEventRef.current('next')
       }
     })
@@ -104,37 +95,7 @@ export default function PlayerWithDrawer() {
     return <VideoPlayer player={state.player} src={state.src} fullPage playerHandleRef={playerHandleRef} />
   }, [state.player, state.src])
 
-  useEffect(() => {
-    function onPointerMove(e: PointerEvent) {
-      if (!btnRef.current) return
-      switch (opacityRef.current) {
-        case 'enabled': {
-          const position = btnRef.current.getBoundingClientRect()
-          const center = {
-            x: position.left + position.width / 2,
-            y: position.top + position.height / 2,
-          }
-          const radius = 100
-          const centerDistance = Math.sqrt(Math.pow(center.x - e.clientX, 2) + Math.pow(center.y - e.clientY, 2))
-          const realDistance = centerDistance - radius
-          const distance = realDistance < 0 ? 0 : realDistance
-          // const opacity = Math.max(1 - distance / 200, 0).toFixed(3)
-          const opacity = distance > 200 ? 0 : 1
-          btnRef.current.style.setProperty('opacity', opacity.toString())
-          break
-        }
-        case 'to-disabled': {
-          opacityRef.current = 'disabled'
-          btnRef.current.style.setProperty('opacity', '1')
-          break
-        }
-        case 'disabled':
-          return
-      }
-    }
-    window.addEventListener('pointermove', onPointerMove)
-    return () => window.removeEventListener('pointermove', onPointerMove)
-  }, [])
+  useShowOnClose({ ref: btnRef, disabled: state.player === 'youtube' && !state.src })
 
   const onCommand = useCallback(({ type, payload }: Command) => {
     switch (type) {
@@ -142,10 +103,8 @@ export default function PlayerWithDrawer() {
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         if (playerHandleRef.current.isPlaying()) {
           playerHandleRef.current.pause()
-          runningRef.current = false
         } else {
           playerHandleRef.current.play()
-          runningRef.current = true
         }
         setState({ player: payload.player, src: payload.src })
         break
@@ -153,7 +112,6 @@ export default function PlayerWithDrawer() {
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         if (!playerHandleRef.current.isPlaying()) {
           playerHandleRef.current.play()
-          runningRef.current = true
         }
         setState({ player: payload.player, src: payload.src })
         break
@@ -161,7 +119,6 @@ export default function PlayerWithDrawer() {
         if (!playerHandleRef.current) throw new Error('playerHandleRef is null')
         if (!playerHandleRef.current.isPlaying()) {
           playerHandleRef.current.play()
-          runningRef.current = true
         }
         setState({ player: payload.player, src: payload.src })
         break
@@ -806,3 +763,56 @@ const playlistItemTypeCheck: TypeCheck<PlaylistItem> = {
 //  current: (it) => typeof it === 'number',
 //  playlist: (it) => checkArray(it, playlistItemTypeCheck),
 //}
+
+type UseShowOnCloseProps = {
+  ref: React.RefObject<HTMLElement>
+  disabled?: boolean
+}
+
+function useShowOnClose({ ref, disabled = false }: UseShowOnCloseProps) {
+  const min = 0
+  const max = 1
+  const opacityRef = useRef<'enabled' | 'to-disabled' | 'disabled'>('enabled')
+
+  useEffect(() => {
+    function onPointerMove(e: PointerEvent) {
+      if (!ref.current) return
+      switch (opacityRef.current) {
+        case 'enabled': {
+          const position = ref.current.getBoundingClientRect()
+          const center = {
+            x: position.left + position.width / 2,
+            y: position.top + position.height / 2,
+          }
+          const radius = 100
+          const centerDistance = Math.sqrt(Math.pow(center.x - e.clientX, 2) + Math.pow(center.y - e.clientY, 2))
+          const realDistance = centerDistance - radius
+          const distance = realDistance < 0 ? 0 : realDistance
+          // const opacity = Math.max(1 - distance / 200, 0).toFixed(3)
+          const opacity = Math.max(distance > 200 ? 0 : 1, min)
+          ref.current.style.setProperty('opacity', opacity.toString())
+          break
+        }
+        case 'to-disabled': {
+          opacityRef.current = 'disabled'
+          ref.current.style.setProperty('opacity', max.toString())
+          break
+        }
+        case 'disabled':
+          return
+      }
+    }
+    window.addEventListener('pointermove', onPointerMove)
+    return () => window.removeEventListener('pointermove', onPointerMove)
+  }, [ref])
+
+  useEffect(() => {
+    if (disabled) {
+      if (opacityRef.current === 'enabled') {
+        opacityRef.current = 'to-disabled'
+      }
+    } else {
+      opacityRef.current = 'enabled'
+    }
+  }, [disabled])
+}
