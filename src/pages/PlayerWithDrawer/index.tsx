@@ -41,7 +41,7 @@ import {
   AlertDialogOverlay,
   useDisclosure,
 } from '@chakra-ui/react'
-import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
 import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
@@ -88,7 +88,7 @@ const DEFAULT_SETTINGS: Settings = {
 }
 
 export default function PlayerWithDrawer() {
-  const toast = useToast()
+  const toast = useToast({ isClosable: true })
   const inputFileRef = useRef<HTMLInputElement>(null)
   const btnRef = useRef<HTMLDivElement>(null)
   const playerHandleRef = useRef<PlayerHandle>(null)
@@ -104,15 +104,6 @@ export default function PlayerWithDrawer() {
   function updateSetting(partialSettings: Partial<Settings>) {
     setSettings((prev) => ({ ...prev, ...partialSettings }))
   }
-
-  const alert = useMemo(
-    () => ({
-      error: (title: string) => toast({ status: 'error', title, isClosable: true }),
-      warning: (title: string) => toast({ status: 'warning', title, isClosable: true }),
-      success: (title: string) => toast({ status: 'success', title, isClosable: true }),
-    }),
-    [toast],
-  )
 
   useShowOnClose({ ref: btnRef, disabled: state.player === 'youtube' && !state.src })
 
@@ -136,8 +127,8 @@ export default function PlayerWithDrawer() {
             : Promise.reject(new Error('playlist is not an array of playlist items')),
         )
         .then((newPlaylist) => updateSetting({ playlist: newPlaylist }))
-        .then(() => alert.success('Playlist imported'))
-        .catch((e: Error) => alert.error('Invalid file: ' + e.message))
+        .then(() => toast({ status: 'success', title: 'Playlist imported' }))
+        .catch((e: Error) => toast({ status: 'error', title: 'Invalid file', description: e.message }))
     }
   }
 
@@ -188,7 +179,7 @@ export default function PlayerWithDrawer() {
           link.click()
 
           URL.revokeObjectURL(url)
-          alert.success('Playlist exported')
+          toast({ status: 'success', title: 'Playlist exported' })
         }
 
         switch (event) {
@@ -202,7 +193,7 @@ export default function PlayerWithDrawer() {
                 return settings
               }
             } else {
-              alert.warning('Playlist is empty')
+              toast({ status: 'warning', title: 'Playlist is empty' })
             }
             break
           case 'next':
@@ -216,7 +207,7 @@ export default function PlayerWithDrawer() {
                 current: settings.current + 1,
               }
             } else {
-              alert.warning('You are at the end of the playlist')
+              toast({ status: 'warning', title: 'You are at the end of the playlist' })
             }
             break
           case 'previous':
@@ -230,7 +221,7 @@ export default function PlayerWithDrawer() {
                 current: settings.current - 1,
               }
             } else {
-              alert.warning('You are at the beginning of the playlist')
+              toast({ status: 'warning', title: 'You are at the beginning of the playlist' })
             }
             break
           case 'fullscreen':
@@ -246,7 +237,7 @@ export default function PlayerWithDrawer() {
         return settings
       })
     },
-    [alert, setSettings],
+    [toast, setSettings],
   )
 
   useEffect(() => {
