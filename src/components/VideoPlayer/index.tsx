@@ -40,6 +40,5 @@ export function VideoPlayer({ player, src, fullPage, playerHandleRef }: VideoPla
     lazyLoadPlayer()
   }, [player, src, fullPage, playerHandleRef])
 
-  console.log('VideoPlayerComponent', player, src, VideoPlayerComponent)
   return <>{VideoPlayerComponent}</>
 }

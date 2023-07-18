@@ -74,7 +74,10 @@ export default function PlayerWithDrawer() {
   const runningRef = useRef(false)
   const onEventRef = useRef<(event: PlayerEvent) => void>(null)
   const [drawerIsOpen, setDrawerIsOpen] = useState(false)
-  const [state, setState] = useState<PlayerState>({ player: 'media-chrome', src: undefined })
+  const [state, setState] = useState<PlayerState>({
+    player: 'media-chrome',
+    src: undefined,
+  })
 
   const onSettingsInit = (settings?: Settings) => {
     if (!settings) return
@@ -107,7 +110,10 @@ export default function PlayerWithDrawer() {
       switch (opacityRef.current) {
         case 'enabled': {
           const position = btnRef.current.getBoundingClientRect()
-          const center = { x: position.left + position.width / 2, y: position.top + position.height / 2 }
+          const center = {
+            x: position.left + position.width / 2,
+            y: position.top + position.height / 2,
+          }
           const radius = 100
           const centerDistance = Math.sqrt(Math.pow(center.x - e.clientX, 2) + Math.pow(center.y - e.clientY, 2))
           const realDistance = centerDistance - radius
@@ -295,7 +301,6 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
               const item = settings.playlist[settings.current]
               onCommand({ type: 'play', payload: item })
               if (settings.src !== item.src || settings.player !== item.player) {
-                console.log('play-pause', item)
                 return { ...settings, src: item.src, player: item.player }
               } else {
                 return settings
@@ -308,7 +313,12 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
             if (settings.current < settings.playlist.length - 1) {
               const item = settings.playlist[settings.current + 1]
               onCommand({ type: 'next', payload: item })
-              return { ...settings, src: item.src, player: item.player, current: settings.current + 1 }
+              return {
+                ...settings,
+                src: item.src,
+                player: item.player,
+                current: settings.current + 1,
+              }
             } else {
               alert.warning('You are at the end of the playlist')
             }
@@ -317,7 +327,12 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, onSettingsInit, onComman
             if (settings.current > 0) {
               const item = settings.playlist[settings.current - 1]
               onCommand({ type: 'previous', payload: item })
-              return { ...settings, src: item.src, player: item.player, current: settings.current - 1 }
+              return {
+                ...settings,
+                src: item.src,
+                player: item.player,
+                current: settings.current - 1,
+              }
             } else {
               alert.warning('You are at the beginning of the playlist')
             }
