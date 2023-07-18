@@ -42,3 +42,5 @@ export const VideoPlayer = memo(({ player, src, fullPage, playerHandleRef }: Vid
 
   return <>{VideoPlayerComponent}</>
 })
+
+export const players: PlayerKind[] = ['media-chrome', 'video-js', 'youtube']
