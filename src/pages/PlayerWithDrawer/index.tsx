@@ -33,6 +33,7 @@ import {
   MenuList,
   MenuItem,
   Flex,
+  useDisclosure,
 } from '@chakra-ui/react'
 import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoPlayer, PlayerKind } from '../../components/VideoPlayer'
@@ -75,7 +76,7 @@ export default function PlayerWithDrawer() {
   const inputFileRef = useRef<HTMLInputElement>(null)
   const btnRef = useRef<HTMLDivElement>(null)
   const playerHandleRef = useRef<PlayerHandle>(null)
-  const [drawerIsOpen, setDrawerIsOpen] = useState(false)
+  const drawer = useDisclosure()
   const [state, setState] = useState<PlayerState>(DEFAULT_PLAYER_STATE)
   const [settings, setSettings] = useStateStorage<Settings>('settings', DEFAULT_SETTINGS, {
     onInit: (settings?: Settings) => {
@@ -242,8 +243,6 @@ export default function PlayerWithDrawer() {
     }
   }, [onEvent, state])
 
-  const onClose = () => setDrawerIsOpen(false)
-
   return (
     <Box>
       <Box bg="gray.100" w="100vw" h="100vh">
@@ -257,15 +256,15 @@ export default function PlayerWithDrawer() {
           variant="ghost"
           colorScheme="blue"
           size="lg"
-          onClick={() => setDrawerIsOpen(true)}
+          onClick={() => drawer.onOpen()}
         />
       </Box>
 
       <PlayerDrawer
         settings={settings}
         updateSettings={updateSetting}
-        isOpen={drawerIsOpen}
-        onClose={onClose}
+        isOpen={drawer.isOpen}
+        onClose={() => drawer.onClose()}
         state={state}
         onSave={(newState) => setState((prev) => ({ ...prev, ...newState }))}
         onCommand={onCommand}
@@ -293,6 +292,19 @@ type Command =
 
 type PlayerEvent = 'play-pause' | 'next' | 'previous' | 'fullscreen' | 'import' | 'export'
 
+type Shortcut = {
+  key: string
+  event: PlayerEvent
+}
+const KEYBOARD_SHORTCUTS: Shortcut[] = [
+  { key: 'K', event: 'play-pause' },
+  { key: 'L', event: 'next' },
+  { key: 'J', event: 'previous' },
+  { key: 'I', event: 'import' },
+  { key: 'E', event: 'export' },
+  { key: 'F', event: 'fullscreen' },
+]
+
 type PageDrawerProps = {
   settings: Settings
   updateSettings: (settings: Partial<Settings>) => void
@@ -308,36 +320,17 @@ function PlayerDrawer({ state, onSave, isOpen, onClose, settings, updateSettings
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
   const [youtubeModalIsOpen, setYoutubeModalIsOpen] = useState(false)
-  const hasSelected = settings.playlist.some((item) => item.src === settings.src)
 
   useEffect(() => {
     let lock = false
     function onKeyDown(e: KeyboardEvent) {
+      if (lock) return
       if (document.activeElement && document.activeElement.tagName === 'INPUT') return
       if (e.ctrlKey || e.altKey || e.metaKey) return
-      if (lock) return
       lock = true
       setTimeout(() => (lock = false), 100)
-      switch (e.key) {
-        case 'K':
-          onEvent('play-pause')
-          break
-        case 'L':
-          onEvent('next')
-          break
-        case 'J':
-          onEvent('previous')
-          break
-        case 'I':
-          onEvent('import')
-          break
-        case 'E':
-          onEvent('export')
-          break
-        case 'F':
-          onEvent('fullscreen')
-          break
-      }
+      const shortcut = KEYBOARD_SHORTCUTS.find((it) => it.key === e.key)
+      if (shortcut) onEvent(shortcut.event)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
