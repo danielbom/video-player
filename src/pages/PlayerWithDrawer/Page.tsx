@@ -5,7 +5,7 @@ import { VideoPlayer, PlayerKind, players } from '../../components/VideoPlayer'
 import { PlayerHandle } from '../../components/VideoPlayer/types'
 import useStateStorage from '../../hooks/useStateStorage'
 import { checkArray, TypeCheck } from '../../lib/type-check'
-import { PlayerDrawer } from './PlayerDrawer'
+import { PageDrawer } from './PageDrawer'
 import { PlayerEvent, PlayerState, PlaylistItem, Settings } from './types'
 import { useShowOnClose } from './useShowOnClose'
 
@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS: Settings = {
   playlist: [],
 }
 
-export default function PlayerWithDrawer() {
+export default function Page() {
   const toast = useToast({ isClosable: true })
   const inputFileRef = useRef<HTMLInputElement>(null)
   const btnRef = useRef<HTMLDivElement>(null)
@@ -209,7 +209,7 @@ export default function PlayerWithDrawer() {
         />
       </Box>
 
-      <PlayerDrawer
+      <PageDrawer
         settings={settings}
         updateSettings={updateSetting}
         isOpen={drawer.isOpen}

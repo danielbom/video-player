@@ -12,8 +12,8 @@ import {
   ModalOverlay,
 } from '@chakra-ui/react'
 import { useRef, useState, useEffect } from 'react'
-import { PlayerInput } from './PlayerInput'
-import { PlayerSelect } from './PlayerSelect'
+import { PageInput } from './PageInput'
+import { PageSelect } from './PageSelect'
 import { PlaylistItem } from './types'
 
 export type Errors<T extends string> = {
@@ -30,13 +30,13 @@ export const INITIAL_ERRORS: Errors<keyof PlaylistItem> = {
   title: null,
 }
 
-export type AddToPlaylistModalProps = {
+export type ModalAddToPlaylistProps = {
   isOpen: boolean
   onClose: (event: 'confirmed' | 'closed', item?: PlaylistItem) => void
   finalFocusRef?: React.RefObject<HTMLElement>
 }
 
-export function AddToPlaylistModal({ isOpen, onClose, finalFocusRef }: AddToPlaylistModalProps) {
+export function ModalAddToPlaylist({ isOpen, onClose, finalFocusRef }: ModalAddToPlaylistProps) {
   const videoSourceRef = useRef<HTMLInputElement>(null)
   const [item, setItem] = useState(INITIAL_ITEM)
   const [errors, setErrors] = useState(INITIAL_ERRORS)
@@ -77,7 +77,7 @@ export function AddToPlaylistModal({ isOpen, onClose, finalFocusRef }: AddToPlay
         <ModalBody textAlign="center">
           <FormControl as="fieldset" isInvalid={!!errors.src} mb={2}>
             <FormLabel as="legend">Video source</FormLabel>
-            <PlayerInput
+            <PageInput
               ref={videoSourceRef}
               value={item.src}
               onChange={(e) => updateItem({ src: e.target.value })}
@@ -87,16 +87,12 @@ export function AddToPlaylistModal({ isOpen, onClose, finalFocusRef }: AddToPlay
           </FormControl>
           <FormControl as="fieldset" isInvalid={!!errors.title} mb={2}>
             <FormLabel as="legend">Title</FormLabel>
-            <PlayerInput
-              value={item.title}
-              onChange={(e) => updateItem({ title: e.target.value })}
-              placeholder="Title"
-            />
+            <PageInput value={item.title} onChange={(e) => updateItem({ title: e.target.value })} placeholder="Title" />
             {errors.title && <FormErrorMessage>{errors.title}</FormErrorMessage>}
           </FormControl>
           <FormControl as="fieldset">
             <FormLabel as="legend">Player</FormLabel>
-            <PlayerSelect value={item.player} onChange={(e) => updateItem({ player: e.target.value as any })} />
+            <PageSelect value={item.player} onChange={(e) => updateItem({ player: e.target.value as any })} />
           </FormControl>
         </ModalBody>
         <ModalFooter>

@@ -22,12 +22,12 @@ import {
   Text,
 } from '@chakra-ui/react'
 import { useRef, useState, useEffect } from 'react'
-import { AddToPlaylistModal } from './AddToPlaylistModal'
+import { ModalAddToPlaylist } from './ModalAddToPlaylist'
 import { AlertDeleteAll } from './AlertDeleteAll'
-import { PlayerInput } from './PlayerInput'
-import { PlayerSelect } from './PlayerSelect'
+import { PageInput } from './PageInput'
+import { PageSelect } from './PageSelect'
 import { Settings, PlayerState, PlayerEvent } from './types'
-import { YoutubeUrlDetectedModal } from './YoutubeUrlDetectedModal'
+import { ModalYoutubeUrlDetected } from './ModalYoutubeUrlDetected'
 
 type Shortcut = {
   key: string
@@ -42,7 +42,7 @@ const KEYBOARD_SHORTCUTS: Shortcut[] = [
   { key: 'F', event: 'fullscreen' },
 ]
 
-export type PlayerDrawerProps = {
+export type PageDrawerProps = {
   settings: Settings
   updateSettings: (settings: Partial<Settings>) => void
   state: PlayerState
@@ -52,7 +52,7 @@ export type PlayerDrawerProps = {
   onEvent: (event: PlayerEvent) => void
 }
 
-export function PlayerDrawer({ state, updateSettings, onSave, isOpen, onClose, settings, onEvent }: PlayerDrawerProps) {
+export function PageDrawer({ state, updateSettings, onSave, isOpen, onClose, settings, onEvent }: PageDrawerProps) {
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const deleteAll = useDisclosure()
   const [addToPlaylistIsOpen, setAddToPlaylistIsOpen] = useState(false)
@@ -86,11 +86,8 @@ export function PlayerDrawer({ state, updateSettings, onSave, isOpen, onClose, s
               <Heading as="h4" size="md" mb={2}>
                 Player
               </Heading>
-              <PlayerSelect
-                value={settings.player}
-                onChange={(e) => updateSettings({ player: e.target.value as any })}
-              />
-              <PlayerInput
+              <PageSelect value={settings.player} onChange={(e) => updateSettings({ player: e.target.value as any })} />
+              <PageInput
                 value={settings.src}
                 onChange={(e) => updateSettings({ src: e.target.value as any })}
                 placeholder="Video source"
@@ -220,7 +217,7 @@ export function PlayerDrawer({ state, updateSettings, onSave, isOpen, onClose, s
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
-      <YoutubeUrlDetectedModal
+      <ModalYoutubeUrlDetected
         url={settings?.src || ''}
         isOpen={youtubeModalIsOpen}
         onClose={(event) => {
@@ -241,7 +238,7 @@ export function PlayerDrawer({ state, updateSettings, onSave, isOpen, onClose, s
           }
         }}
       />
-      <AddToPlaylistModal
+      <ModalAddToPlaylist
         finalFocusRef={addButtonRef}
         isOpen={addToPlaylistIsOpen}
         onClose={(event, item) => {

@@ -11,13 +11,13 @@ import {
   Box,
 } from '@chakra-ui/react'
 
-export type YoutubeUrlDetectedModalProps = {
+export type ModalYoutubeUrlDetectedProps = {
   url: string
   isOpen: boolean
   onClose: (event: 'confirmed' | 'denied' | 'closed') => void
 }
 
-export function YoutubeUrlDetectedModal({ url, isOpen, onClose }: YoutubeUrlDetectedModalProps) {
+export function ModalYoutubeUrlDetected({ url, isOpen, onClose }: ModalYoutubeUrlDetectedProps) {
   return (
     <Modal
       isCentered

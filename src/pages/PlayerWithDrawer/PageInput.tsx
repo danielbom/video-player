@@ -1,7 +1,7 @@
 import { Input } from '@chakra-ui/react'
 import { forwardRef } from 'react'
 
-export type PlayerInputProps = {
+export type PageInputProps = {
   value: string | undefined
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   placeholder: string
@@ -9,9 +9,9 @@ export type PlayerInputProps = {
   autoFocus?: boolean
 }
 
-export const PlayerInput = forwardRef(
+export const PageInput = forwardRef(
   (
-    { value, onChange, placeholder, isInvalid, autoFocus }: PlayerInputProps,
+    { value, onChange, placeholder, isInvalid, autoFocus }: PageInputProps,
     ref: React.ForwardedRef<HTMLInputElement>,
   ) => {
     return (

@@ -1,12 +1,12 @@
 import { Select } from '@chakra-ui/react'
 import { PlayerKind, players } from '../../components/VideoPlayer'
 
-export type SelectPlayerProps = {
+export type PageSelectProps = {
   value: PlayerKind
   onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void
 }
 
-export function PlayerSelect({ value, onChange }: SelectPlayerProps) {
+export function PageSelect({ value, onChange }: PageSelectProps) {
   return (
     <Select value={value} onChange={onChange} variant="filled" mb={2} size="lg">
       {players.map((player) => (
